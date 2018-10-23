@@ -177,7 +177,6 @@ static int arasan_sdhci_probe(struct udevice *dev)
 	struct arasan_sdhci_priv *priv = dev_get_priv(dev);
 	struct sdhci_host *host;
 	int ret;
-
 	host = priv->host;
 
 	host->quirks = SDHCI_QUIRK_WAIT_SEND_CMD |
@@ -193,6 +192,7 @@ static int arasan_sdhci_probe(struct udevice *dev)
 
 	ret = sdhci_setup_cfg(&plat->cfg, host, CONFIG_ZYNQ_SDHCI_MAX_FREQ,
 			      CONFIG_ZYNQ_SDHCI_MIN_FREQ);
+	debug("%s, sdhci_setup_cfg return: %d", __func__, ret);
 	host->mmc = &plat->mmc;
 	if (ret)
 		return ret;
@@ -211,6 +211,7 @@ static int arasan_sdhci_probe(struct udevice *dev)
 	}
 
 	ret = sdhci_probe(dev);
+	debug("%s, sdhci_probe return: %d", __func__, ret);
 	if (ret)
 		return ret;
 
@@ -227,7 +228,6 @@ static int arasan_sdhci_ofdata_to_platdata(struct udevice *dev)
 
 	priv->host->name = dev->name;
 	priv->host->ioaddr = (void *)dev_get_addr(dev);
-
 	priv->deviceid = fdtdec_get_int(gd->fdt_blob, dev->of_offset,
 					"xlnx,device_id", -1);
 	priv->bank = fdtdec_get_int(gd->fdt_blob, dev->of_offset,
@@ -240,6 +240,7 @@ static int arasan_sdhci_ofdata_to_platdata(struct udevice *dev)
 		priv->no_1p8 = 1;
 	else
 		priv->no_1p8 = 0;
+
 
 	if (fdt_get_property(gd->fdt_blob, dev->of_offset, "mmc-pwrseq", NULL))
 		priv->pwrseq = true;

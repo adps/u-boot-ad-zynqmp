@@ -109,7 +109,7 @@ static u64 *find_pte(u64 addr, int level)
 	u64 va_bits;
 	int i;
 
-	debug("addr=%llx level=%d\n", addr, level);
+//	debug("addr=%llx level=%d\n", addr, level);
 
 	get_tcr(0, NULL, &va_bits);
 	if (va_bits < 39)
@@ -123,7 +123,7 @@ static u64 *find_pte(u64 addr, int level)
 	for (i = start_level; i < 4; i++) {
 		idx = (addr >> level2shift(i)) & 0x1FF;
 		pte += idx;
-		debug("idx=%llx PTE %p at level %d: %llx\n", idx, pte, i, *pte);
+//		debug("idx=%llx PTE %p at level %d: %llx\n", idx, pte, i, *pte);
 
 		/* Found it */
 		if (i == level)
@@ -191,7 +191,7 @@ static void split_block(u64 *pte, int level)
 		if ((level + 1) == 3)
 			new_table[i] |= PTE_TYPE_TABLE;
 
-		debug("Setting new_table[%lld] = %llx\n", i, new_table[i]);
+		//debug("Setting new_table[%lld] = %llx\n", i, new_table[i]);
 	}
 
 	/* Set the new table into effect */
@@ -213,7 +213,7 @@ static void add_map(struct mm_region *map)
 	while (size) {
 		pte = find_pte(virt, 0);
 		if (pte && (pte_type(pte) == PTE_TYPE_FAULT)) {
-			debug("Creating table for virt 0x%llx\n", virt);
+//			debug("Creating table for virt 0x%llx\n", virt);
 			new_table = create_table();
 			set_pte_table(pte, new_table);
 		}
@@ -224,12 +224,12 @@ static void add_map(struct mm_region *map)
 				panic("pte not found\n");
 
 			blocksize = 1ULL << level2shift(level);
-			debug("Checking if pte fits for virt=%llx size=%llx blocksize=%llx\n",
-			      virt, size, blocksize);
+//			debug("Checking if pte fits for virt=%llx size=%llx blocksize=%llx\n",
+//			      virt, size, blocksize);
 			if (size >= blocksize && !(virt & (blocksize - 1))) {
 				/* Page fits, create block PTE */
-				debug("Setting PTE %p to block virt=%llx\n",
-				      pte, virt);
+//				debug("Setting PTE %p to block virt=%llx\n",
+//				      pte, virt);
 				*pte = phys | attrs;
 				virt += blocksize;
 				phys += blocksize;
@@ -237,13 +237,13 @@ static void add_map(struct mm_region *map)
 				break;
 			} else if (pte_type(pte) == PTE_TYPE_FAULT) {
 				/* Page doesn't fit, create subpages */
-				debug("Creating subtable for virt 0x%llx blksize=%llx\n",
-				      virt, blocksize);
+//				debug("Creating subtable for virt 0x%llx blksize=%llx\n",
+//				      virt, blocksize);
 				new_table = create_table();
 				set_pte_table(pte, new_table);
 			} else if (pte_type(pte) == PTE_TYPE_BLOCK) {
-				debug("Split block into subtable for virt 0x%llx blksize=0x%llx\n",
-				      virt, blocksize);
+//				debug("Split block into subtable for virt 0x%llx blksize=0x%llx\n",
+//				      virt, blocksize);
 				split_block(pte, level);
 			}
 		}
@@ -511,13 +511,13 @@ static u64 set_one_region(u64 start, u64 size, u64 attrs, int level)
 	if (is_aligned(start, size, levelsize)) {
 		*pte &= ~PMD_ATTRINDX_MASK;
 		*pte |= attrs;
-		debug("Set attrs=%llx pte=%p level=%d\n", attrs, pte, level);
+		//debug("Set attrs=%llx pte=%p level=%d\n", attrs, pte, level);
 
 		return levelsize;
 	}
 
 	/* Unaligned or doesn't fit, maybe split block into table */
-	debug("addr=%llx level=%d pte=%p (%llx)\n", start, level, pte, *pte);
+	//debug("addr=%llx level=%d pte=%p (%llx)\n", start, level, pte, *pte);
 
 	/* Maybe we need to split the block into a table */
 	if (pte_type(pte) == PTE_TYPE_BLOCK)

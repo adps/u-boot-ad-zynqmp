@@ -111,7 +111,9 @@ unsigned int zynqmp_get_silicon_version(void)
 	case 0 ... 1000000:
 		return ZYNQMP_CSU_VERSION_VELOCE;
 	case 50000000:
-		return ZYNQMP_CSU_VERSION_QEMU;
+		//admvpx39z2 has 50MHz clock...
+		//return ZYNQMP_CSU_VERSION_QEMU;
+		return ZYNQMP_CSU_VERSION_SILICON;
 	case 4000000:
 		return ZYNQMP_CSU_VERSION_EP108;
 	}
@@ -176,6 +178,7 @@ void zynqmp_pmufw_version(void)
 	printf("PMUFW:\tv%d.%d\n",
 	       pm_api_version >> ZYNQMP_PM_VERSION_MAJOR_SHIFT,
 	       pm_api_version & ZYNQMP_PM_VERSION_MINOR_MASK);
+	
 
 	if (pm_api_version != ZYNQMP_PM_VERSION)
 		panic("PMUFW version error. Expected: v%d.%d\n",

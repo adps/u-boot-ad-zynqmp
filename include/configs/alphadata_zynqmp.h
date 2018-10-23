@@ -5,11 +5,13 @@
  *
  * Based on Configuration for Versatile Express
  *
+ * Modified by ch@alpha-data.com for use with admvpx39z
+ *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __XILINX_ZYNQMP_H
-#define __XILINX_ZYNQMP_H
+#ifndef __ALPHADATA_ZYNQMP_H
+#define __ALPHADATA_ZYNQMP_H
 
 #define CONFIG_REMAKE_ELF
 
@@ -91,7 +93,7 @@
 # endif
 # define CONFIG_ENV_IS_IN_FAT
 # define FAT_ENV_DEVICE_AND_PART	"0:auto"
-# define FAT_ENV_FILE			"uboot.env"
+# define FAT_ENV_FILE			"uEnv.txt"
 # define FAT_ENV_INTERFACE		"mmc"
 #endif
 
@@ -191,9 +193,13 @@
 	"kernel_offset=0x180000\0" \
 	"fdt_offset=0x100000\0" \
 	"kernel_size=0x1e00000\0" \
+	"kernel_image=Image-admvpx39z.bin\0" \
+	"ramdisk_image=adlnx-image-admvpx39z.cpio.gz.u-boot\0" \
+	"ramdisk_addr=0x6000000\0" \
+	"fdt_image=admvpx39z.dtb\0" \
 	"fdt_size=0x80000\0" \
 	"bootenv=uEnv.txt\0" \
-	"bootargs=earlycon clk_ignore_unused\0" \
+	"bootargs=earlycon clk_ignore_unused cpuidle.off=1\0" \
 	"loadbootenv=load mmc $sdbootdev:$partid ${loadbootenv_addr} ${bootenv}\0" \
 	"importbootenv=echo Importing environment from SD ...; " \
 		"env import -t ${loadbootenv_addr} $filesize\0" \

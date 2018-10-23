@@ -1,0 +1,6 @@
+ALPHADATA_ZYNQMP BOARDS
+M:	Christopher Holyoake <ch@alpha-data.com>
+S:	Maintained
+F:	board/alphadata/zynqmp/
+F:	include/configs/alphadata_zynqmp*
+F:	configs/alphadata_zynqmp*

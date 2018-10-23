@@ -117,6 +117,7 @@ dtb-$(CONFIG_ARCH_ZYNQ) += zynq-zc702.dtb \
 	zynq-zc770-xm012.dtb \
 	zynq-zc770-xm013.dtb
 dtb-$(CONFIG_ARCH_ZYNQMP) += \
+	zynqmp-admvpx39z.dtb			\
 	zynqmp-ep108.dtb			\
 	zynqmp-zcu100-revC.dtb			\
 	zynqmp-zcu100-revB.dtb			\

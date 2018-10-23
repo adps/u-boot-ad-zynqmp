@@ -401,6 +401,8 @@ static int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 {
 	struct sdhci_host *host = mmc->priv;
 	unsigned int div, clk = 0, timeout, reg;
+	
+	debug("%s, \n", __func__);
 
 	/* Wait max 20 ms */
 	timeout = 200;
@@ -718,8 +720,9 @@ int sdhci_setup_cfg(struct mmc_config *cfg, struct sdhci_host *host,
 {
 	u32 caps;
 	u32 caps_1 = 0;
-
+	debug("%s \n", __func__);
 	caps = sdhci_readl(host, SDHCI_CAPABILITIES);
+	debug("%s: caps: %u \n", __func__, caps);
 
 #ifdef CONFIG_MMC_SDHCI_SDMA
 	if (!(caps & SDHCI_CAN_DO_SDMA)) {
@@ -733,7 +736,7 @@ int sdhci_setup_cfg(struct mmc_config *cfg, struct sdhci_host *host,
 			sdhci_readl(host, SDHCI_HOST_VERSION - 2) >> 16;
 	else
 		host->version = sdhci_readw(host, SDHCI_HOST_VERSION);
-
+	debug("%s: version: %u \n", __func__, host->version);
 	cfg->name = host->name;
 #ifndef CONFIG_DM_MMC_OPS
 	cfg->ops = &sdhci_ops;

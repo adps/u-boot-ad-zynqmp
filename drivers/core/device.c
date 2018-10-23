@@ -360,7 +360,7 @@ int device_probe(struct udevice *dev)
 		if (ret)
 			goto fail;
 	}
-
+	
 	if (drv->probe) {
 		ret = drv->probe(dev);
 		if (ret) {
@@ -368,14 +368,11 @@ int device_probe(struct udevice *dev)
 			goto fail;
 		}
 	}
-
 	ret = uclass_post_probe_device(dev);
 	if (ret)
 		goto fail_uclass;
-
 	if (dev->parent && device_get_uclass_id(dev) == UCLASS_PINCTRL)
 		pinctrl_select_state(dev, "default");
-
 	return 0;
 fail_uclass:
 	if (device_remove(dev)) {
@@ -384,7 +381,6 @@ fail_uclass:
 	}
 fail:
 	dev->flags &= ~DM_FLAG_ACTIVATED;
-
 	dev->seq = -1;
 	device_free(dev);
 
