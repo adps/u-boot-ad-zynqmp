@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2012, Google Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -169,11 +168,6 @@ static int do_host(cmd_tbl_t *cmdtp, int flag, int argc,
 }
 
 U_BOOT_CMD(
-	sb,	8,	1,	do_host,
-	"Deprecated: use 'host' command instead.", ""
-);
-
-U_BOOT_CMD(
 	host, 8, 1, do_host,
 	"Miscellaneous host commands",
 	"load hostfs - <addr> <filename> [<bytes> <offset>]  - "
@@ -181,7 +175,7 @@ U_BOOT_CMD(
 	"host ls hostfs - <filename>                    - list files on host\n"
 	"host save hostfs - <addr> <filename> <bytes> [<offset>] - "
 		"save a file to host\n"
-	"host size hostfs - <filename> - determine size of file on host"
+	"host size hostfs - <filename> - determine size of file on host\n"
 	"host bind <dev> [<filename>] - bind \"host\" device to file\n"
 	"host info [<dev>]            - show device binding & info\n"
 	"host dev [<dev>] - Set or retrieve the current host device\n"

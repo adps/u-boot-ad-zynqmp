@@ -1,12 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 OMICRON electronics GmbH
  *
- * based on drivers/mtd/nand/nand_spl_load.c
+ * based on drivers/mtd/nand/raw/nand_spl_load.c
  *
  * Copyright (C) 2011
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -14,6 +13,8 @@
 #include <spi_flash.h>
 #include <errno.h>
 #include <spl.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #ifdef CONFIG_SPL_OS_BOOT
 /*
@@ -27,7 +28,7 @@ static int spi_load_image_os(struct spl_image_info *spl_image,
 	int err;
 
 	/* Read for a header, parse or error out. */
-	spi_flash_read(flash, CONFIG_SYS_SPI_KERNEL_OFFS, 0x40,
+	spi_flash_read(flash, CONFIG_SYS_SPI_KERNEL_OFFS, sizeof(*header),
 		       (void *)header);
 
 	if (image_get_magic(header) != IH_MAGIC)
@@ -38,8 +39,7 @@ static int spi_load_image_os(struct spl_image_info *spl_image,
 		return err;
 
 	spi_flash_read(flash, CONFIG_SYS_SPI_KERNEL_OFFS,
-		       spl_image->size,
-		       (void *)(uintptr_t)spl_image->load_addr);
+		       spl_image->size, (void *)spl_image->load_addr);
 
 	/* Read device tree. */
 	spi_flash_read(flash, CONFIG_SYS_SPI_ARGS_OFFS,
@@ -71,6 +71,7 @@ static int spl_spi_load_image(struct spl_image_info *spl_image,
 			      struct spl_boot_device *bootdev)
 {
 	int err = 0;
+	unsigned payload_offs = CONFIG_SYS_SPI_U_BOOT_OFFS;
 	struct spi_flash *flash;
 	struct image_header *header;
 
@@ -87,21 +88,38 @@ static int spl_spi_load_image(struct spl_image_info *spl_image,
 		return -ENODEV;
 	}
 
-	/* use CONFIG_SYS_TEXT_BASE as temporary storage area */
-	header = (struct image_header *)(CONFIG_SYS_TEXT_BASE);
+	header = spl_get_load_buffer(-sizeof(*header), sizeof(*header));
+
+#if CONFIG_IS_ENABLED(OF_CONTROL) && !CONFIG_IS_ENABLED(OF_PLATDATA)
+	payload_offs = fdtdec_get_config_int(gd->fdt_blob,
+					     "u-boot,spl-payload-offset",
+					     payload_offs);
+#endif
 
 #ifdef CONFIG_SPL_OS_BOOT
 	if (spl_start_uboot() || spi_load_image_os(spl_image, flash, header))
 #endif
 	{
 		/* Load u-boot, mkimage header is 64 bytes. */
-		err = spi_flash_read(flash, CONFIG_SYS_SPI_U_BOOT_OFFS, 0x40,
+		err = spi_flash_read(flash, payload_offs, sizeof(*header),
 				     (void *)header);
-		if (err)
+		if (err) {
+			debug("%s: Failed to read from SPI flash (err=%d)\n",
+			      __func__, err);
 			return err;
+		}
 
-		if (IS_ENABLED(CONFIG_SPL_LOAD_FIT) &&
-			image_get_magic(header) == FDT_MAGIC) {
+		if (IS_ENABLED(CONFIG_SPL_LOAD_FIT_FULL) &&
+		    image_get_magic(header) == FDT_MAGIC) {
+			err = spi_flash_read(flash, payload_offs,
+					     roundup(fdt_totalsize(header), 4),
+					     (void *)CONFIG_SYS_LOAD_ADDR);
+			if (err)
+				return err;
+			err = spl_parse_image_header(spl_image,
+					(struct image_header *)CONFIG_SYS_LOAD_ADDR);
+		} else if (IS_ENABLED(CONFIG_SPL_LOAD_FIT) &&
+			   image_get_magic(header) == FDT_MAGIC) {
 			struct spl_load_info load;
 
 			debug("Found FIT\n");
@@ -111,16 +129,15 @@ static int spl_spi_load_image(struct spl_image_info *spl_image,
 			load.bl_len = 1;
 			load.read = spl_spi_fit_read;
 			err = spl_load_simple_fit(spl_image, &load,
-						  CONFIG_SYS_SPI_U_BOOT_OFFS,
+						  payload_offs,
 						  header);
 		} else {
 			err = spl_parse_image_header(spl_image, header);
 			if (err)
 				return err;
-			err = spi_flash_read(flash, CONFIG_SYS_SPI_U_BOOT_OFFS,
+			err = spi_flash_read(flash, payload_offs,
 					     spl_image->size,
-					     (void *)
-					     (uintptr_t)spl_image->load_addr);
+					     (void *)spl_image->load_addr);
 		}
 	}
 

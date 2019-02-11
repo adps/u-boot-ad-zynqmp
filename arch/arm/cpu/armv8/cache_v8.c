@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2013
  * David Feng <fenghua@phytium.com.cn>
  *
  * (C) Copyright 2016
  * Alexander Graf <agraf@suse.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -109,7 +108,7 @@ static u64 *find_pte(u64 addr, int level)
 	u64 va_bits;
 	int i;
 
-//	debug("addr=%llx level=%d\n", addr, level);
+	debug("addr=%llx level=%d\n", addr, level);
 
 	get_tcr(0, NULL, &va_bits);
 	if (va_bits < 39)
@@ -123,7 +122,7 @@ static u64 *find_pte(u64 addr, int level)
 	for (i = start_level; i < 4; i++) {
 		idx = (addr >> level2shift(i)) & 0x1FF;
 		pte += idx;
-//		debug("idx=%llx PTE %p at level %d: %llx\n", idx, pte, i, *pte);
+		debug("idx=%llx PTE %p at level %d: %llx\n", idx, pte, i, *pte);
 
 		/* Found it */
 		if (i == level)
@@ -191,7 +190,7 @@ static void split_block(u64 *pte, int level)
 		if ((level + 1) == 3)
 			new_table[i] |= PTE_TYPE_TABLE;
 
-		//debug("Setting new_table[%lld] = %llx\n", i, new_table[i]);
+		debug("Setting new_table[%lld] = %llx\n", i, new_table[i]);
 	}
 
 	/* Set the new table into effect */
@@ -213,7 +212,7 @@ static void add_map(struct mm_region *map)
 	while (size) {
 		pte = find_pte(virt, 0);
 		if (pte && (pte_type(pte) == PTE_TYPE_FAULT)) {
-//			debug("Creating table for virt 0x%llx\n", virt);
+			debug("Creating table for virt 0x%llx\n", virt);
 			new_table = create_table();
 			set_pte_table(pte, new_table);
 		}
@@ -224,26 +223,29 @@ static void add_map(struct mm_region *map)
 				panic("pte not found\n");
 
 			blocksize = 1ULL << level2shift(level);
-//			debug("Checking if pte fits for virt=%llx size=%llx blocksize=%llx\n",
-//			      virt, size, blocksize);
+			debug("Checking if pte fits for virt=%llx size=%llx blocksize=%llx\n",
+			      virt, size, blocksize);
 			if (size >= blocksize && !(virt & (blocksize - 1))) {
 				/* Page fits, create block PTE */
-//				debug("Setting PTE %p to block virt=%llx\n",
-//				      pte, virt);
-				*pte = phys | attrs;
+				debug("Setting PTE %p to block virt=%llx\n",
+				      pte, virt);
+				if (level == 3)
+					*pte = phys | attrs | PTE_TYPE_PAGE;
+				else
+					*pte = phys | attrs;
 				virt += blocksize;
 				phys += blocksize;
 				size -= blocksize;
 				break;
 			} else if (pte_type(pte) == PTE_TYPE_FAULT) {
 				/* Page doesn't fit, create subpages */
-//				debug("Creating subtable for virt 0x%llx blksize=%llx\n",
-//				      virt, blocksize);
+				debug("Creating subtable for virt 0x%llx blksize=%llx\n",
+				      virt, blocksize);
 				new_table = create_table();
 				set_pte_table(pte, new_table);
 			} else if (pte_type(pte) == PTE_TYPE_BLOCK) {
-//				debug("Split block into subtable for virt 0x%llx blksize=0x%llx\n",
-//				      virt, blocksize);
+				debug("Split block into subtable for virt 0x%llx blksize=0x%llx\n",
+				      virt, blocksize);
 				split_block(pte, level);
 			}
 		}
@@ -446,7 +448,7 @@ inline void flush_dcache_all(void)
  */
 void invalidate_dcache_range(unsigned long start, unsigned long stop)
 {
-	__asm_flush_dcache_range(start, stop);
+	__asm_invalidate_dcache_range(start, stop);
 }
 
 /*
@@ -501,7 +503,8 @@ static bool is_aligned(u64 addr, u64 size, u64 align)
 	return !(addr & (align - 1)) && !(size & (align - 1));
 }
 
-static u64 set_one_region(u64 start, u64 size, u64 attrs, int level)
+/* Use flag to indicate if attrs has more than d-cache attributes */
+static u64 set_one_region(u64 start, u64 size, u64 attrs, bool flag, int level)
 {
 	int levelshift = level2shift(level);
 	u64 levelsize = 1ULL << levelshift;
@@ -509,15 +512,20 @@ static u64 set_one_region(u64 start, u64 size, u64 attrs, int level)
 
 	/* Can we can just modify the current level block PTE? */
 	if (is_aligned(start, size, levelsize)) {
-		*pte &= ~PMD_ATTRINDX_MASK;
-		*pte |= attrs;
-		//debug("Set attrs=%llx pte=%p level=%d\n", attrs, pte, level);
+		if (flag) {
+			*pte &= ~PMD_ATTRMASK;
+			*pte |= attrs & PMD_ATTRMASK;
+		} else {
+			*pte &= ~PMD_ATTRINDX_MASK;
+			*pte |= attrs & PMD_ATTRINDX_MASK;
+		}
+		debug("Set attrs=%llx pte=%p level=%d\n", attrs, pte, level);
 
 		return levelsize;
 	}
 
 	/* Unaligned or doesn't fit, maybe split block into table */
-	//debug("addr=%llx level=%d pte=%p (%llx)\n", start, level, pte, *pte);
+	debug("addr=%llx level=%d pte=%p (%llx)\n", start, level, pte, *pte);
 
 	/* Maybe we need to split the block into a table */
 	if (pte_type(pte) == PTE_TYPE_BLOCK)
@@ -560,7 +568,8 @@ void mmu_set_region_dcache_behaviour(phys_addr_t start, size_t size,
 		u64 r;
 
 		for (level = 1; level < 4; level++) {
-			r = set_one_region(start, size, attrs, level);
+			/* Set d-cache attributes only */
+			r = set_one_region(start, size, attrs, false, level);
 			if (r) {
 				/* PTE successfully replaced */
 				size -= r;
@@ -579,6 +588,63 @@ void mmu_set_region_dcache_behaviour(phys_addr_t start, size_t size,
 	 * have caches off now
 	 */
 	flush_dcache_range(real_start, real_start + real_size);
+}
+
+/*
+ * Modify MMU table for a region with updated PXN/UXN/Memory type/valid bits.
+ * The procecess is break-before-make. The target region will be marked as
+ * invalid during the process of changing.
+ */
+void mmu_change_region_attr(phys_addr_t addr, size_t siz, u64 attrs)
+{
+	int level;
+	u64 r, size, start;
+
+	start = addr;
+	size = siz;
+	/*
+	 * Loop through the address range until we find a page granule that fits
+	 * our alignment constraints, then set it to "invalid".
+	 */
+	while (size > 0) {
+		for (level = 1; level < 4; level++) {
+			/* Set PTE to fault */
+			r = set_one_region(start, size, PTE_TYPE_FAULT, true,
+					   level);
+			if (r) {
+				/* PTE successfully invalidated */
+				size -= r;
+				start += r;
+				break;
+			}
+		}
+	}
+
+	flush_dcache_range(gd->arch.tlb_addr,
+			   gd->arch.tlb_addr + gd->arch.tlb_size);
+	__asm_invalidate_tlb_all();
+
+	/*
+	 * Loop through the address range until we find a page granule that fits
+	 * our alignment constraints, then set it to the new cache attributes
+	 */
+	start = addr;
+	size = siz;
+	while (size > 0) {
+		for (level = 1; level < 4; level++) {
+			/* Set PTE to new attributes */
+			r = set_one_region(start, size, attrs, true, level);
+			if (r) {
+				/* PTE successfully updated */
+				size -= r;
+				start += r;
+				break;
+			}
+		}
+	}
+	flush_dcache_range(gd->arch.tlb_addr,
+			   gd->arch.tlb_addr + gd->arch.tlb_size);
+	__asm_invalidate_tlb_all();
 }
 
 #else	/* CONFIG_SYS_DCACHE_OFF */

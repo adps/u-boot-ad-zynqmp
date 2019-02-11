@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * (C) Copyright 2015 - 2016, Xilinx, Inc,
  * Michal Simek <michal.simek@xilinx.com>
  * Siva Durga Prasad <siva.durga.paladugu@xilinx.com>
- *
- * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <console.h>
@@ -11,6 +10,7 @@
 #include <zynqmppl.h>
 #include <linux/sizes.h>
 #include <asm/arch/sys_proto.h>
+#include <memalign.h>
 
 #define DUMMY_WORD	0xffffffff
 
@@ -150,7 +150,8 @@ static ulong zynqmp_align_dma_buffer(u32 *buf, u32 len, u32 swap)
 			new_buf[i] = load_word(&buf[i], swap);
 
 		buf = new_buf;
-	} else if (swap != SWAP_DONE) {
+	} else if ((swap != SWAP_DONE) &&
+		   (zynqmp_pmufw_version() <= PMUFW_V1_0)) {
 		/* For bitstream which are aligned */
 		u32 *new_buf = (u32 *)buf;
 
@@ -195,129 +196,110 @@ static int zynqmp_validate_bitstream(xilinx_desc *desc, const void *buf,
 static int zynqmp_load(xilinx_desc *desc, const void *buf, size_t bsize,
 		     bitstream_type bstype)
 {
-	u32 swap;
+	ALLOC_CACHE_ALIGN_BUFFER(u32, bsizeptr, 1);
+	u32 swap = 0;
 	ulong bin_buf;
 	int ret;
 	u32 buf_lo, buf_hi;
 	u32 ret_payload[PAYLOAD_ARG_CNT];
+	bool xilfpga_old = false;
 
-	if (zynqmp_validate_bitstream(desc, buf, bsize, bsize, &swap))
-		return FPGA_FAIL;
+	if (zynqmp_pmufw_version() <= PMUFW_V1_0) {
+		puts("WARN: PMUFW v1.0 or less is detected\n");
+		puts("WARN: Not all bitstream formats are supported\n");
+		puts("WARN: Please upgrade PMUFW\n");
+		xilfpga_old = true;
+		if (zynqmp_validate_bitstream(desc, buf, bsize, bsize, &swap))
+			return FPGA_FAIL;
+		bsizeptr = (u32 *)&bsize;
+		flush_dcache_range((ulong)bsizeptr,
+				   (ulong)bsizeptr + sizeof(size_t));
+		bstype |= BIT(ZYNQMP_FPGA_BIT_NS);
+	}
 
 	bin_buf = zynqmp_align_dma_buffer((u32 *)buf, bsize, swap);
 
 	debug("%s called!\n", __func__);
 	flush_dcache_range(bin_buf, bin_buf + bsize);
 
-	if (bsize % 4)
-		bsize = bsize / 4 + 1;
-	else
-		bsize = bsize / 4;
-
 	buf_lo = (u32)bin_buf;
 	buf_hi = upper_32_bits(bin_buf);
-	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_FPGA_LOAD, buf_lo, buf_hi, bsize,
-			 bstype, ret_payload);
+
+	if (xilfpga_old)
+		ret = invoke_smc(ZYNQMP_SIP_SVC_PM_FPGA_LOAD, buf_lo, buf_hi,
+				 (u32)(uintptr_t)bsizeptr, bstype, ret_payload);
+	else
+		ret = invoke_smc(ZYNQMP_SIP_SVC_PM_FPGA_LOAD, buf_lo, buf_hi,
+				 (u32)bsize, 0, ret_payload);
+
 	if (ret)
-		debug("PL FPGA LOAD fail\n");
+		puts("PL FPGA LOAD fail\n");
 
 	return ret;
 }
 
 #if defined(CONFIG_CMD_FPGA_LOAD_SECURE) && !defined(CONFIG_SPL_BUILD)
 static int zynqmp_loads(xilinx_desc *desc, const void *buf, size_t bsize,
-		       fpga_secure_info *fpga_sec_info)
+			struct fpga_secure_info *fpga_sec_info)
 {
-	u32 keyaddr, keysize, ivaddr, ivsize;
-	char *key_str, *size_str, *dup_str;
-	u32 *tmpbuf = (u32 *)buf;
-	ulong bitsize = bsize;
-	ulong key_iv_size;
 	int ret;
 	u32 buf_lo, buf_hi;
 	u32 ret_payload[PAYLOAD_ARG_CNT];
-	u8 flag;
+	u8 flag = 0;
 
-	size_str = strchr(fpga_sec_info->keyaddr_size, ':');
-	if (size_str) {
-		dup_str = strdup(fpga_sec_info->keyaddr_size);
-		dup_str[size_str - fpga_sec_info->keyaddr_size] = 0;
-		key_str = dup_str;
-		size_str++;
-	} else {
-		debug("No Key Size mentioned\n");
-		return FPGA_FAIL;
+	flush_dcache_range((ulong)buf, (ulong)buf +
+			   ALIGN(bsize, CONFIG_SYS_CACHELINE_SIZE));
+
+	if (!fpga_sec_info->encflag)
+		flag |= BIT(ZYNQMP_FPGA_BIT_ENC_DEV_KEY);
+
+	if (fpga_sec_info->userkey_addr &&
+	    fpga_sec_info->encflag == FPGA_ENC_USR_KEY) {
+		flush_dcache_range((ulong)fpga_sec_info->userkey_addr,
+				   (ulong)fpga_sec_info->userkey_addr +
+				   ALIGN(KEY_PTR_LEN,
+					 CONFIG_SYS_CACHELINE_SIZE));
+		flag |= BIT(ZYNQMP_FPGA_BIT_ENC_USR_KEY);
 	}
 
-	keyaddr = simple_strtoul(key_str, NULL, 16);
-	keysize = simple_strtoul(size_str, NULL, 16);
+	if (!fpga_sec_info->authflag)
+		flag |= BIT(ZYNQMP_FPGA_BIT_AUTH_OCM);
 
-	size_str = strchr(fpga_sec_info->ivaddr_size, ':');
-	if (size_str) {
-		dup_str = strdup(fpga_sec_info->ivaddr_size);
-		dup_str[size_str - fpga_sec_info->ivaddr_size] = 0;
-		key_str = dup_str;
-		size_str++;
-	} else {
-		debug("No IV Size mentioned\n");
-		return FPGA_FAIL;
-	}
+	if (fpga_sec_info->authflag == ZYNQMP_FPGA_AUTH_DDR)
+		flag |= BIT(ZYNQMP_FPGA_BIT_AUTH_DDR);
 
-	ivaddr = simple_strtoul(key_str, NULL, 16);
-	ivsize = simple_strtoul(size_str, NULL, 16);
-
-	debug("Keyaddr:0x%x, keysize:P0x%x\n", keyaddr, keysize);
-	debug("ivaddr:0x%x, ivsize:P0x%x\n", ivaddr, ivsize);
-
-	key_iv_size = keysize + ivsize;
-
-	if (bsize % 4)
-		bsize = bsize / 4 + 1;
-	else
-		bsize = bsize / 4;
-
-	tmpbuf += bsize;
-
-	memcpy(tmpbuf, (const void *)(uintptr_t)keyaddr, keysize);
-
-	if (keysize % 4)
-		keysize = keysize / 4 + 1;
-	else
-		keysize = keysize / 4;
-
-	tmpbuf += keysize;
-
-	memcpy(tmpbuf, (const void *)(uintptr_t)ivaddr, ivsize);
-
-	debug("%s called!\n", __func__);
-	flush_dcache_range((ulong)buf, (ulong)buf + bitsize + key_iv_size);
-
-	buf_lo = (u32)(ulong)buf;
+	buf_lo = lower_32_bits((ulong)buf);
 	buf_hi = upper_32_bits((ulong)buf);
 
-	switch (fpga_sec_info->sec_img_type) {
-	case 0:
-		flag = ZYNQMP_FPGA_FLAG_ENCRYPTED;
-		break;
-	case 1:
-		flag = ZYNQMP_FPGA_FLAG_AUTHENTICATED;
-		break;
-	default:
-		return FPGA_FAIL;
-	}
-
-	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_FPGA_LOAD, buf_lo, buf_hi, bsize,
+	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_FPGA_LOAD, buf_lo, buf_hi,
+			 (u32)(uintptr_t)fpga_sec_info->userkey_addr,
 			 flag, ret_payload);
 	if (ret)
-		debug("PL FPGA LOAD fail\n");
+		puts("PL FPGA LOAD fail\n");
+	else
+		puts("Bitstream successfully loaded\n");
 
 	return ret;
 }
 #endif
+
+static int zynqmp_pcap_info(xilinx_desc *desc)
+{
+	int ret;
+	u32 ret_payload[PAYLOAD_ARG_CNT];
+
+	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_FPGA_STATUS, 0, 0, 0,
+			 0, ret_payload);
+	if (!ret)
+		printf("PCAP status\t0x%x\n", ret_payload[1]);
+
+	return ret;
+}
 
 struct xilinx_fpga_op zynqmp_op = {
 	.load = zynqmp_load,
 #if defined CONFIG_CMD_FPGA_LOAD_SECURE
 	.loads = zynqmp_loads,
 #endif
+	.info = zynqmp_pcap_info,
 };

@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2008 Semihalf
  *
  * (C) Copyright 2000-2009
  * DENX Software Engineering
  * Wolfgang Denk, wd@denx.de
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "mkimage.h"
@@ -98,21 +97,22 @@ static void usage(const char *msg)
 		"          -i => input filename for ramdisk file\n");
 #ifdef CONFIG_FIT_SIGNATURE
 	fprintf(stderr,
-		"Signing / verified boot options: [-E] [-k keydir] [-K dtb] [ -c <comment>] [-p addr] [-r]\n"
+		"Signing / verified boot options: [-E] [-k keydir] [-K dtb] [ -c <comment>] [-p addr] [-r] [-N engine]\n"
 		"          -E => place data outside of the FIT structure\n"
 		"          -k => set directory containing private keys\n"
 		"          -K => write public keys to this .dtb file\n"
 		"          -c => add comment in signature node\n"
 		"          -F => re-sign existing FIT image\n"
 		"          -p => place external data at a static position\n"
-		"          -r => mark keys used as 'required' in dtb\n");
+		"          -r => mark keys used as 'required' in dtb\n"
+		"          -N => engine to use for signing (pkcs11)\n");
 #else
 	fprintf(stderr,
 		"Signing / verified boot not supported (CONFIG_FIT_SIGNATURE undefined)\n");
 #endif
 	fprintf(stderr, "       %s -V ==> print version information and exit\n",
 		params.cmdname);
-	fprintf(stderr, "Use -T to see a list of available image types\n");
+	fprintf(stderr, "Use '-T list' to see a list of available image types\n");
 
 	exit(EXIT_FAILURE);
 }
@@ -143,7 +143,7 @@ static void process_args(int argc, char **argv)
 	int opt;
 
 	while ((opt = getopt(argc, argv,
-			     "a:A:b:c:C:d:D:e:Ef:Fk:i:K:ln:p:O:rR:qsT:vVx")) != -1) {
+			     "a:A:b:c:C:d:D:e:Ef:Fk:i:K:ln:N:p:O:rR:qsT:vVx")) != -1) {
 		switch (opt) {
 		case 'a':
 			params.addr = strtoull(optarg, &ptr, 16);
@@ -224,6 +224,9 @@ static void process_args(int argc, char **argv)
 		case 'n':
 			params.imagename = optarg;
 			break;
+		case 'N':
+			params.engine_id = optarg;
+			break;
 		case 'O':
 			params.os = genimg_get_os_id(optarg);
 			if (params.os < 0) {
@@ -256,6 +259,10 @@ static void process_args(int argc, char **argv)
 			params.skipcpy = 1;
 			break;
 		case 'T':
+			if (strcmp(optarg, "list") == 0) {
+				show_valid_options(IH_TYPE);
+				exit(EXIT_SUCCESS);
+			}
 			type = genimg_get_type_id(optarg);
 			if (type < 0) {
 				show_valid_options(IH_TYPE);
@@ -293,6 +300,8 @@ static void process_args(int argc, char **argv)
 		else if (!params.datafile)
 			usage("Missing data file for auto-FIT (use -d)");
 	} else if (type != IH_TYPE_INVALID) {
+		if (type == IH_TYPE_SCRIPT && !params.datafile)
+			usage("Missing data file for script (use -d)");
 		params.type = type;
 	}
 
@@ -309,6 +318,7 @@ int main(int argc, char **argv)
 	struct image_type_params *tparams = NULL;
 	int pad_len = 0;
 	int dfd;
+	size_t map_len;
 
 	params.cmdname = *argv;
 	params.addr = 0;
@@ -506,6 +516,27 @@ int main(int argc, char **argv)
 		} else if (params.type == IH_TYPE_PBLIMAGE) {
 			/* PBL has special Image format, implements its' own */
 			pbl_load_uboot(ifd, &params);
+		} else if (params.type == IH_TYPE_ZYNQMPBIF) {
+			/* Image file is meta, walk through actual targets */
+			int ret;
+
+			ret = zynqmpbif_copy_image(ifd, &params);
+			if (ret)
+				return ret;
+		} else if (params.type == IH_TYPE_IMX8IMAGE) {
+			/* i.MX8/8X has special Image format */
+			int ret;
+
+			ret = imx8image_copy_image(ifd, &params);
+			if (ret)
+				return ret;
+		} else if (params.type == IH_TYPE_IMX8MIMAGE) {
+			/* i.MX8M has special Image format */
+			int ret;
+
+			ret = imx8mimage_copy_image(ifd, &params);
+			if (ret)
+				return ret;
 		} else {
 			copy_file(ifd, params.datafile, pad_len);
 		}
@@ -522,7 +553,7 @@ int main(int argc, char **argv)
 							+ 0x20, 0 };
 			int i = params.file_size;
 			for (; i < aligned_filesize; i++) {
-				if (write(ifd, &i, 1) != 1) {
+				if (write(ifd, (char *) &i, 1) != 1) {
 					fprintf(stderr,
 							"%s: Write error on %s: %s\n",
 							params.cmdname,
@@ -560,7 +591,8 @@ int main(int argc, char **argv)
 	}
 	params.file_size = sbuf.st_size;
 
-	ptr = mmap(0, sbuf.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, ifd, 0);
+	map_len = sbuf.st_size;
+	ptr = mmap(0, map_len, PROT_READ | PROT_WRITE, MAP_SHARED, ifd, 0);
 	if (ptr == MAP_FAILED) {
 		fprintf (stderr, "%s: Can't map %s: %s\n",
 			params.cmdname, params.imagefile, strerror(errno));
@@ -580,12 +612,11 @@ int main(int argc, char **argv)
 	if (tparams->print_header)
 		tparams->print_header (ptr);
 	else {
-		fprintf (stderr, "%s: Can't print header for %s: %s\n",
-			params.cmdname, tparams->name, strerror(errno));
-		exit (EXIT_FAILURE);
+		fprintf (stderr, "%s: Can't print header for %s\n",
+			params.cmdname, tparams->name);
 	}
 
-	(void) munmap((void *)ptr, sbuf.st_size);
+	(void)munmap((void *)ptr, map_len);
 
 	/* We're a bit of paranoid */
 #if defined(_POSIX_SYNCHRONIZED_IO) && \

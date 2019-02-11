@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2016, Google Inc
  *
  * (C) Copyright 2002
  * David Mueller, ELSOFT AG, d.mueller@elsoft.ch
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -522,9 +521,9 @@ static int s3c_i2c_ofdata_to_platdata(struct udevice *dev)
 	struct s3c24x0_i2c_bus *i2c_bus = dev_get_priv(dev);
 	int node;
 
-	node = dev->of_offset;
+	node = dev_of_offset(dev);
 
-	i2c_bus->hsregs = (struct exynos5_hsi2c *)dev_get_addr(dev);
+	i2c_bus->hsregs = (struct exynos5_hsi2c *)devfdt_get_addr(dev);
 
 	i2c_bus->id = pinmux_decode_periph_id(blob, node);
 

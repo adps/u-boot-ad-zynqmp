@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015, Bin Meng <bmeng.cn@gmail.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -17,7 +16,7 @@ int cpu_x86_bind(struct udevice *dev)
 	struct cpu_platdata *plat = dev_get_parent_platdata(dev);
 	struct cpuid_result res;
 
-	plat->cpu_id = fdtdec_get_int(gd->fdt_blob, dev->of_offset,
+	plat->cpu_id = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
 				      "intel,apic-id", -1);
 	plat->family = gd->arch.x86;
 	res = cpuid(1);
@@ -41,10 +40,14 @@ int cpu_x86_get_vendor(struct udevice *dev, char *buf, int size)
 
 int cpu_x86_get_desc(struct udevice *dev, char *buf, int size)
 {
+	char *ptr;
+
 	if (size < CPU_MAX_NAME_LEN)
 		return -ENOSPC;
 
-	cpu_get_name(buf);
+	ptr = cpu_get_name(buf);
+	if (ptr != buf)
+		strcpy(buf, ptr);
 
 	return 0;
 }
@@ -91,4 +94,5 @@ U_BOOT_DRIVER(cpu_x86_drv) = {
 	.of_match	= cpu_x86_ids,
 	.bind		= cpu_x86_bind,
 	.ops		= &cpu_x86_ops,
+	.flags		= DM_FLAG_PRE_RELOC,
 };

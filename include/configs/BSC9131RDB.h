@@ -1,7 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2011-2012 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -16,8 +15,6 @@
 #ifdef CONFIG_SPIFLASH
 #define CONFIG_RAMBOOT_SPIFLASH
 #define CONFIG_SYS_RAMBOOT
-#define CONFIG_SYS_EXTRA_ENV_RELOC
-#define CONFIG_SYS_TEXT_BASE		0x11000000
 #define CONFIG_RESET_VECTOR_ADDRESS	0x110bfffc
 #endif
 
@@ -27,7 +24,6 @@
 #define CONFIG_SPL_FLUSH_IMAGE
 #define CONFIG_SPL_TARGET		"u-boot-with-spl.bin"
 
-#define CONFIG_SYS_TEXT_BASE		0x00201000
 #define CONFIG_SPL_TEXT_BASE		0xFFFFE000
 #define CONFIG_SPL_MAX_SIZE		8192
 #define CONFIG_SPL_RELOC_TEXT_BASE	0x00100000
@@ -46,10 +42,7 @@
 #endif
 
 /* High Level Configuration Options */
-#define CONFIG_FSL_IFC			/* Enable IFC Support */
-#define CONFIG_FSL_CAAM			/* Enable SEC/CAAM */
 
-#define CONFIG_TSEC_ENET
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_DDR_CLK_FREQ	66666666 /* DDRCLK on 9131 RDB */
@@ -148,7 +141,6 @@ extern unsigned long get_sdram_size(void);
 /*
  * IFC Definitions
  */
-#define CONFIG_SYS_NO_FLASH
 
 /* NAND Flash on IFC */
 #define CONFIG_SYS_NAND_BASE		0xff800000
@@ -184,7 +176,6 @@ extern unsigned long get_sdram_size(void);
 
 #define CONFIG_SYS_NAND_BASE_LIST	{ CONFIG_SYS_NAND_BASE }
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
-#define CONFIG_CMD_NAND
 #define CONFIG_SYS_NAND_BLOCK_SIZE	(128 * 1024)
 
 #define CONFIG_SYS_NAND_DDR_LAW		11
@@ -198,8 +189,6 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_SYS_CS0_FTIM2		CONFIG_SYS_NAND_FTIM2
 #define CONFIG_SYS_CS0_FTIM3		CONFIG_SYS_NAND_FTIM3
 
-#define CONFIG_BOARD_EARLY_INIT_F	/* Call board_pre_init */
-
 #define CONFIG_SYS_INIT_RAM_LOCK
 #define CONFIG_SYS_INIT_RAM_ADDR	0xffd00000	/* stack in RAM */
 #define CONFIG_SYS_INIT_RAM_SIZE	0x00004000/* End of used area in RAM */
@@ -212,7 +201,6 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_SYS_MALLOC_LEN		(1024 * 1024)	/* Reserved for malloc*/
 
 /* Serial Port */
-#define CONFIG_CONS_INDEX	1
 #undef	CONFIG_SERIAL_SOFTWARE_FIFO
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
@@ -233,7 +221,6 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_SYS_FSL_I2C_OFFSET	0x3000
 
 /* I2C EEPROM */
-#define CONFIG_CMD_EEPROM
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN 1
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS 3
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS 5
@@ -246,7 +233,6 @@ extern unsigned long get_sdram_size(void);
 
 #if defined(CONFIG_TSEC_ENET)
 
-#define CONFIG_MII			/* MII PHY management */
 #define CONFIG_MII_DEFAULT_TSEC	1	/* Allow unregistered phys */
 #define CONFIG_TSEC1	1
 #define CONFIG_TSEC1_NAME	"eTSEC1"
@@ -265,15 +251,12 @@ extern unsigned long get_sdram_size(void);
 
 #define CONFIG_ETHPRIME		"eTSEC1"
 
-#define CONFIG_PHY_GIGE		/* Include GbE speed/duplex detection */
-
 #endif	/* CONFIG_TSEC_ENET */
 
 /*
  * Environment
  */
 #if defined(CONFIG_RAMBOOT_SPIFLASH)
-#define CONFIG_ENV_IS_IN_SPI_FLASH
 #define CONFIG_ENV_SPI_BUS	0
 #define CONFIG_ENV_SPI_CS	0
 #define CONFIG_ENV_SPI_MAX_HZ	10000000
@@ -282,13 +265,10 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_ENV_SECT_SIZE	0x10000
 #define CONFIG_ENV_SIZE		0x2000
 #elif defined(CONFIG_NAND)
-#define CONFIG_ENV_IS_IN_NAND
-#define CONFIG_SYS_EXTRA_ENV_RELOC
 #define CONFIG_ENV_SIZE		CONFIG_SYS_NAND_BLOCK_SIZE
 #define CONFIG_ENV_OFFSET	((768 * 1024) + CONFIG_SYS_NAND_BLOCK_SIZE)
 #define CONFIG_ENV_RANGE	(3 * CONFIG_ENV_SIZE)
 #elif defined(CONFIG_SYS_RAMBOOT)
-#define CONFIG_ENV_IS_NOWHERE	/* Store ENV in memory only */
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - 0x1000)
 #define CONFIG_ENV_SIZE		0x2000
 #endif
@@ -297,19 +277,8 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_SYS_LOADS_BAUD_CHANGE		/* allow baudrate change */
 
 /*
- * Command line configuration.
- */
-#define CONFIG_CMD_ERRATA
-#define CONFIG_CMD_IRQ
-#define CONFIG_DOS_PARTITION
-#define CONFIG_CMD_REGINFO
-
-/*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
-#define CONFIG_CMDLINE_EDITING			/* Command-line editing */
-#define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 
 #if defined(CONFIG_CMD_KGDB)
@@ -317,9 +286,6 @@ extern unsigned long get_sdram_size(void);
 #else
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size */
 #endif
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
-						/* Print Buffer Size */
-#define CONFIG_SYS_MAXARGS	16		/* max number of command args */
 #define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE/* Boot Argument Buffer Size */
 
 /*
@@ -334,15 +300,7 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
 #endif
 
-/* Hash command with SHA acceleration supported in hardware */
-#ifdef CONFIG_FSL_CAAM
-#define CONFIG_CMD_HASH
-#define CONFIG_SHA_HW_ACCEL
-#endif
-
-#define CONFIG_USB_EHCI
-
-#ifdef CONFIG_USB_EHCI
+#ifdef CONFIG_USB_EHCI_HCD
 #define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 #define CONFIG_USB_EHCI_FSL
 #define CONFIG_HAS_FSL_DR_USB
@@ -351,12 +309,6 @@ extern unsigned long get_sdram_size(void);
 /*
  * Dynamic MTD Partition support with mtdparts
  */
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
-#define CONFIG_CMD_MTDPARTS
-#define MTDIDS_DEFAULT "nand0=ff800000.flash,"
-#define MTDPARTS_DEFAULT "mtdparts=ff800000.flash:1m(uboot)," \
-			"8m(kernel),512k(dtb),-(fs)"
 
 /*
  * Environment Configuration
@@ -366,12 +318,10 @@ extern unsigned long get_sdram_size(void);
 #define CONFIG_HAS_ETH0
 #endif
 
-#define CONFIG_HOSTNAME		BSC9131rdb
+#define CONFIG_HOSTNAME		"BSC9131rdb"
 #define CONFIG_ROOTPATH		"/opt/nfsroot"
 #define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_UBOOTPATH	"u-boot.bin" /* U-Boot image on TFTP server */
-
-#define CONFIG_BAUDRATE		115200
 
 #define	CONFIG_EXTRA_ENV_SETTINGS				\
 	"netdev=eth0\0"						\

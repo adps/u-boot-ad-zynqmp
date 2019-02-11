@@ -1,15 +1,17 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012
  * Texas Instruments, <www.ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #ifndef	_SPL_H_
 #define	_SPL_H_
 
+#include <binman_sym.h>
+
 /* Platform-specific defines */
 #include <linux/compiler.h>
 #include <asm/spl.h>
+#include <handoff.h>
 
 /* Value in r0 indicates we booted from U-Boot */
 #define UBOOT_NOT_LOADED_FROM_SPL	0x13578642
@@ -20,13 +22,58 @@
 #define MMCSD_MODE_FS		2
 #define MMCSD_MODE_EMMCBOOT	3
 
+/*
+ * u_boot_first_phase() - check if this is the first U-Boot phase
+ *
+ * U-Boot has up to three phases: TPL, SPL and U-Boot proper. Depending on the
+ * build flags we can determine whether the current build is for the first
+ * phase of U-Boot or not. If there is no SPL, then this is U-Boot proper. If
+ * there is SPL but no TPL, the the first phase is SPL. If there is TPL, then
+ * it is the first phase.
+ *
+ * @returns true if this is the first phase of U-Boot
+ *
+ */
+static inline bool u_boot_first_phase(void)
+{
+	if (IS_ENABLED(CONFIG_TPL)) {
+		if (IS_ENABLED(CONFIG_TPL_BUILD))
+			return true;
+	} else if (IS_ENABLED(CONFIG_SPL)) {
+		if (IS_ENABLED(CONFIG_SPL_BUILD))
+			return true;
+	} else {
+		return true;
+	}
+
+	return false;
+}
+
+/* A string name for SPL or TPL */
+#ifdef CONFIG_SPL_BUILD
+# ifdef CONFIG_TPL_BUILD
+#  define SPL_TPL_NAME	"TPL"
+# else
+#  define SPL_TPL_NAME	"SPL"
+# endif
+# define SPL_TPL_PROMPT	SPL_TPL_NAME ": "
+#else
+# define SPL_TPL_NAME	""
+# define SPL_TPL_PROMPT	""
+#endif
+
 struct spl_image_info {
 	const char *name;
 	u8 os;
-	u32 load_addr;
-	u32 entry_point;
+	uintptr_t load_addr;
+	uintptr_t entry_point;
+#if CONFIG_IS_ENABLED(LOAD_FIT)
+	void *fdt_addr;
+#endif
+	u32 boot_device;
 	u32 size;
 	u32 flags;
+	void *arg;
 };
 
 /*
@@ -47,6 +94,15 @@ struct spl_load_info {
 		      void *buf);
 };
 
+/*
+ * We need to know the position of U-Boot in memory so we can jump to it. We
+ * allow any U-Boot binary to be used (u-boot.bin, u-boot-nodtb.bin,
+ * u-boot.img), hence the '_any'. These is no checking here that the correct
+ * image is found. For * example if u-boot.img is used we don't check that
+ * spl_parse_image_header() can parse a valid header.
+ */
+binman_sym_extern(ulong, u_boot_any, image_pos);
+
 /**
  * spl_load_simple_fit() - Loads a fit image from a device.
  * @spl_image:	Image description to set up
@@ -62,11 +118,14 @@ int spl_load_simple_fit(struct spl_image_info *spl_image,
 			struct spl_load_info *info, ulong sector, void *fdt);
 
 #define SPL_COPY_PAYLOAD_ONLY	1
+#define SPL_FIT_FOUND		2
 
 /* SPL common functions */
 void preloader_console_init(void);
 u32 spl_boot_device(void);
 u32 spl_boot_mode(const u32 boot_device);
+int spl_boot_partition(const u32 boot_device);
+void spl_set_bd(void);
 
 /**
  * spl_set_header_raw_uboot() - Set up a standard SPL image structure
@@ -85,7 +144,7 @@ void spl_set_header_raw_uboot(struct spl_image_info *spl_image);
  * This parses the legacy image header information at @header and sets up
  * @spl_image according to what is found. If no image header is found, then
  * a raw image or bootz is assumed. If CONFIG_SPL_PANIC_ON_RAW_IMAGE is
- * enabled, then this causes a panic. If CONFIG_SPL_ABORT_ON_RAW_IMAGE is
+ * enabled, then this causes a panic. If CONFIG_SPL_RAW_IMAGE_SUPPORT is not
  * enabled then U-Boot gives up. Otherwise U-Boot sets up the image using
  * spl_set_header_raw_uboot(), or possibly the bootz header.
  *
@@ -106,10 +165,8 @@ int spl_board_ubi_load_image(u32 boot_device);
  * This jumps into a Linux kernel using the information in @spl_image.
  *
  * @spl_image: Image description to set up
- * @arg: Argument to pass to Linux (typically a device tree pointer)
  */
-void __noreturn jump_to_image_linux(struct spl_image_info *spl_image,
-				    void *arg);
+void __noreturn jump_to_image_linux(struct spl_image_info *spl_image);
 
 /**
  * spl_start_uboot() - Check if SPL should start the kernel or U-Boot
@@ -213,11 +270,29 @@ int spl_load_image_ext_os(struct spl_image_info *spl_image,
 			  struct blk_desc *block_dev, int partition);
 
 /**
- * spl_init() - Set up device tree and driver model in SPL if enabled
+ * spl_early_init() - Set up device tree and driver model in SPL if enabled
  *
  * Call this function in board_init_f() if you want to use device tree and
- * driver model early, before board_init_r() is called. This function will
- * be called from board_init_r() if not called earlier.
+ * driver model early, before board_init_r() is called.
+ *
+ * If this is not called, then driver model will be inactive in SPL's
+ * board_init_f(), and no device tree will be available.
+ */
+int spl_early_init(void);
+
+/**
+ * spl_init() - Set up device tree and driver model in SPL if enabled
+ *
+ * You can optionally call spl_early_init(), then optionally call spl_init().
+ * This function will be called from board_init_r() if not called earlier.
+ *
+ * Both spl_early_init() and spl_init() perform a similar function except that
+ * the latter will not set up the malloc() area if
+ * CONFIG_SPL_STACK_R_MALLOC_SIMPLE_LEN is enabled, since it is assumed to
+ * already be done by a calll to spl_relocate_stack_gd() before board_init_r()
+ * is reached.
+ *
+ * This function will be called from board_init_r() if not called earlier.
  *
  * If this is not called, then driver model will be inactive in SPL's
  * board_init_f(), and no device tree will be available.
@@ -249,5 +324,59 @@ int spl_dfu_cmd(int usbctrl, char *dfu_alt_info, char *interface, char *devstr);
 
 int spl_mmc_load_image(struct spl_image_info *spl_image,
 		       struct spl_boot_device *bootdev);
+
+/**
+ * spl_invoke_atf - boot using an ARM trusted firmware image
+ */
+void spl_invoke_atf(struct spl_image_info *spl_image);
+
+/**
+ * spl_optee_entry - entry function for optee
+ *
+ * args defind in op-tee project
+ * https://github.com/OP-TEE/optee_os/
+ * core/arch/arm/kernel/generic_entry_a32.S
+ * @arg0: pagestore
+ * @arg1: (ARMv7 standard bootarg #1)
+ * @arg2: device tree address, (ARMv7 standard bootarg #2)
+ * @arg3: non-secure entry address (ARMv7 bootarg #0)
+ */
+void spl_optee_entry(void *arg0, void *arg1, void *arg2, void *arg3);
+
+/**
+ * board_return_to_bootrom - allow for boards to continue with the boot ROM
+ *
+ * If a board (e.g. the Rockchip RK3368 boards) provide some
+ * supporting functionality for SPL in their boot ROM and the SPL
+ * stage wants to return to the ROM code to continue booting, boards
+ * can implement 'board_return_to_bootrom'.
+ */
+void board_return_to_bootrom(void);
+
+/**
+ * board_spl_fit_post_load - allow process images after loading finished
+ *
+ */
+void board_spl_fit_post_load(ulong load_addr, size_t length);
+
+/**
+ * board_spl_fit_size_align - specific size align before processing payload
+ *
+ */
+ulong board_spl_fit_size_align(ulong size);
+
+/**
+ * spl_perform_fixups() - arch/board-specific callback before processing
+ *                        the boot-payload
+ */
+void spl_perform_fixups(struct spl_image_info *spl_image);
+
+/*
+ * spl_get_load_buffer() - get buffer for loading partial image data
+ *
+ * Returns memory area which can be populated by partial image data,
+ * ie. uImage or fitImage header.
+ */
+struct image_header *spl_get_load_buffer(ssize_t offset, size_t size);
 
 #endif

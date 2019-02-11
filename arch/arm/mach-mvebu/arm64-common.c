@@ -1,13 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2016 Stefan Roese <sr@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
 #include <fdtdec.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
+#include <linux/sizes.h>
+#include <pci.h>
 #include <asm/io.h>
 #include <asm/system.h>
 #include <asm/arch/cpu.h>
@@ -45,75 +46,66 @@ const struct mbus_dram_target_info *mvebu_mbus_dram_info(void)
 
 /* DRAM init code ... */
 
-static const void *get_memory_reg_prop(const void *fdt, int *lenp)
+#define MV_SIP_DRAM_SIZE	0x82000010
+
+static u64 a8k_dram_scan_ap_sz(void)
 {
-	int offset;
+	struct pt_regs pregs;
 
-	offset = fdt_path_offset(fdt, "/memory");
-	if (offset < 0)
-		return NULL;
+	pregs.regs[0] = MV_SIP_DRAM_SIZE;
+	pregs.regs[1] = SOC_REGS_PHY_BASE;
+	smc_call(&pregs);
 
-	return fdt_getprop(fdt, offset, "reg", lenp);
+	return pregs.regs[0];
 }
 
-int dram_init(void)
+static void a8k_dram_init_banksize(void)
 {
-	const void *fdt = gd->fdt_blob;
-	const fdt32_t *val;
-	int ac, sc, len;
+	/*
+	 * The firmware (ATF) leaves a 1G whole above the 3G mark for IO
+	 * devices. Higher RAM is mapped at 4G.
+	 *
+	 * Config 2 DRAM banks:
+	 * Bank 0 - max size 4G - 1G
+	 * Bank 1 - ram size - 4G + 1G
+	 */
+	phys_size_t max_bank0_size = SZ_4G - SZ_1G;
 
-	ac = fdt_address_cells(fdt, 0);
-	sc = fdt_size_cells(fdt, 0);
-	if (ac < 0 || sc < 1 || sc > 2) {
-		printf("invalid address/size cells\n");
-		return -EINVAL;
+	gd->bd->bi_dram[0].start = CONFIG_SYS_SDRAM_BASE;
+	if (gd->ram_size <= max_bank0_size) {
+		gd->bd->bi_dram[0].size = gd->ram_size;
+		return;
 	}
 
-	val = get_memory_reg_prop(fdt, &len);
-	if (len / sizeof(*val) < ac + sc)
-		return -EINVAL;
+	gd->bd->bi_dram[0].size = max_bank0_size;
+	if (CONFIG_NR_DRAM_BANKS > 1) {
+		gd->bd->bi_dram[1].start = SZ_4G;
+		gd->bd->bi_dram[1].size = gd->ram_size - max_bank0_size;
+	}
+}
 
-	val += ac;
-
-	gd->ram_size = fdtdec_get_number(val, sc);
-
-	debug("DRAM size = %08lx\n", (unsigned long)gd->ram_size);
+int dram_init_banksize(void)
+{
+	if (CONFIG_IS_ENABLED(ARMADA_8K))
+		a8k_dram_init_banksize();
+	else
+		fdtdec_setup_memory_banksize();
 
 	return 0;
 }
 
-void dram_init_banksize(void)
+int dram_init(void)
 {
-	const void *fdt = gd->fdt_blob;
-	const fdt32_t *val;
-	int ac, sc, cells, len, i;
-
-	val = get_memory_reg_prop(fdt, &len);
-	if (len < 0)
-		return;
-
-	ac = fdt_address_cells(fdt, 0);
-	sc = fdt_size_cells(fdt, 0);
-	if (ac < 1 || sc > 2 || sc < 1 || sc > 2) {
-		printf("invalid address/size cells\n");
-		return;
+	if (CONFIG_IS_ENABLED(ARMADA_8K)) {
+		gd->ram_size = a8k_dram_scan_ap_sz();
+		if (gd->ram_size != 0)
+			return 0;
 	}
 
-	cells = ac + sc;
+	if (fdtdec_setup_mem_size_base() != 0)
+		return -EINVAL;
 
-	len /= sizeof(*val);
-
-	for (i = 0; i < CONFIG_NR_DRAM_BANKS && len >= cells;
-	     i++, len -= cells) {
-		gd->bd->bi_dram[i].start = fdtdec_get_number(val, ac);
-		val += ac;
-		gd->bd->bi_dram[i].size = fdtdec_get_number(val, sc);
-		val += sc;
-
-		debug("DRAM bank %d: start = %08lx, size = %08lx\n",
-		      i, (unsigned long)gd->bd->bi_dram[i].start,
-		      (unsigned long)gd->bd->bi_dram[i].size);
-	}
+	return 0;
 }
 
 int arch_cpu_init(void)
@@ -144,6 +136,11 @@ int arch_early_init_r(void)
 
 	/* Cause the SATA device to do its early init */
 	uclass_first_device(UCLASS_AHCI, &dev);
+
+#ifdef CONFIG_DM_PCI
+	/* Trigger PCIe devices detection */
+	pci_init();
+#endif
 
 	return 0;
 }

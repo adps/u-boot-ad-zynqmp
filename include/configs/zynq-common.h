@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2012 Michal Simek <monstr@monstr.eu>
- * (C) Copyright 2013 Xilinx, Inc.
+ * (C) Copyright 2013 - 2018 Xilinx, Inc.
  *
  * Common configuration options for all Zynq boards.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_ZYNQ_COMMON_H
@@ -14,6 +13,8 @@
 #ifndef CONFIG_CPU_FREQ_HZ
 # define CONFIG_CPU_FREQ_HZ	800000000
 #endif
+
+#define CONFIG_REMAKE_ELF
 
 /* Cache options */
 #define CONFIG_SYS_L2CACHE_OFF
@@ -28,39 +29,25 @@
 #define CONFIG_SYS_TIMER_COUNTER	(CONFIG_SYS_TIMERBASE + 0x4)
 
 /* Serial drivers */
-#define CONFIG_BAUDRATE		115200
 /* The following table includes the supported baudrates */
 #define CONFIG_SYS_BAUDRATE_TABLE  \
 	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400}
 
 #define CONFIG_ARM_DCC
-#define CONFIG_ZYNQ_SERIAL
 
 /* Ethernet driver */
 #if defined(CONFIG_ZYNQ_GEM)
-# define CONFIG_MII
 # define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-# define CONFIG_PHY_MARVELL
-# define CONFIG_PHY_REALTEK
-# define CONFIG_PHY_XILINX
-# define CONFIG_BOOTP_BOOTPATH
-# define CONFIG_BOOTP_GATEWAY
-# define CONFIG_BOOTP_HOSTNAME
 # define CONFIG_BOOTP_MAY_FAIL
-#endif
-
-/* SPI */
-#ifdef CONFIG_ZYNQ_SPI
 #endif
 
 /* QSPI */
 #ifdef CONFIG_ZYNQ_QSPI
 # define CONFIG_SF_DEFAULT_SPEED	30000000
-# define CONFIG_SF_DUAL_FLASH
 #endif
 
 /* NOR */
-#ifndef CONFIG_SYS_NO_FLASH
+#ifdef CONFIG_MTD_NOR_FLASH
 # define CONFIG_SYS_FLASH_BASE		0xE2000000
 # define CONFIG_SYS_FLASH_SIZE		(16 * 1024 * 1024)
 # define CONFIG_SYS_MAX_FLASH_BANKS	1
@@ -68,24 +55,12 @@
 # define CONFIG_SYS_FLASH_ERASE_TOUT	1000
 # define CONFIG_SYS_FLASH_WRITE_TOUT	5000
 # define CONFIG_FLASH_SHOW_PROGRESS	10
-# define CONFIG_SYS_FLASH_CFI
 # undef CONFIG_SYS_FLASH_EMPTY_INFO
-# define CONFIG_FLASH_CFI_DRIVER
-# undef CONFIG_SYS_FLASH_PROTECTION
-# define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 #endif
 
 #ifdef CONFIG_NAND_ZYNQ
-#define CONFIG_CMD_NAND_LOCK_UNLOCK
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_ONFI_DETECTION
-#define CONFIG_MTD_DEVICE
-#endif
-
-/* MMC */
-#if defined(CONFIG_ZYNQ_SDHCI)
-# define CONFIG_GENERIC_MMC
-# define CONFIG_ZYNQ_SDHCI_MAX_FREQ	52000000
 #endif
 
 #ifdef CONFIG_USB_EHCI_ZYNQ
@@ -94,9 +69,7 @@
 # define CONFIG_SYS_DFU_DATA_BUF_SIZE	0x600000
 # define DFU_DEFAULT_POLL_TIMEOUT	300
 # define CONFIG_USB_CABLE_CHECK
-# define CONFIG_CMD_THOR_DOWNLOAD
 # define CONFIG_THOR_RESET_OFF
-# define CONFIG_USB_FUNCTION_THOR
 # define DFU_ALT_INFO_RAM \
 	"dfu_ram_info=" \
 	"set dfu_alt_info " \
@@ -106,7 +79,7 @@
 	"dfu_ram=run dfu_ram_info && dfu 0 ram 0\0" \
 	"thor_ram=run dfu_ram_info && thordown 0 ram 0\0"
 
-# if defined(CONFIG_ZYNQ_SDHCI)
+# if defined(CONFIG_MMC_SDHCI_ZYNQ)
 #  define DFU_ALT_INFO_MMC \
 	"dfu_mmc_info=" \
 	"set dfu_alt_info " \
@@ -129,34 +102,13 @@
 # define DFU_ALT_INFO
 #endif
 
-#if defined(CONFIG_ZYNQ_SDHCI) || defined(CONFIG_ZYNQ_USB)
-# define CONFIG_SUPPORT_VFAT
-# define CONFIG_FAT_WRITE
-# define CONFIG_DOS_PARTITION
-#endif
-
-/* NAND */
-#ifdef CONFIG_NAND_ZYNQ
-# define CONFIG_CMD_NAND_LOCK_UNLOCK
-# define CONFIG_SYS_MAX_NAND_DEVICE 1
-# define CONFIG_SYS_NAND_ONFI_DETECTION
-# define CONFIG_MTD_DEVICE
-#endif
-
-#if defined(CONFIG_ZYNQ_I2C0) || defined(CONFIG_ZYNQ_I2C1)
-#define CONFIG_SYS_I2C_ZYNQ
-#endif
-
 /* I2C */
 #if defined(CONFIG_SYS_I2C_ZYNQ)
 # define CONFIG_SYS_I2C
-# define CONFIG_SYS_I2C_ZYNQ_SPEED		100000
-# define CONFIG_SYS_I2C_ZYNQ_SLAVE		0
 #endif
 
 /* EEPROM */
 #ifdef CONFIG_ZYNQ_EEPROM
-# define CONFIG_CMD_EEPROM
 # define CONFIG_SYS_I2C_EEPROM_ADDR_LEN		1
 # define CONFIG_SYS_I2C_EEPROM_ADDR		0x54
 # define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS	4
@@ -167,41 +119,66 @@
 #endif
 
 /* Total Size of Environment Sector */
-#define CONFIG_ENV_SIZE			(128 << 10)
+#ifdef CONFIG_ENV_IS_IN_EEPROM
+# define CONFIG_EXTRA_ENV_SETTINGS
+#endif
 
 /* Allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
 
-/* Environment */
-#ifndef CONFIG_ENV_IS_NOWHERE
-# ifndef CONFIG_SYS_NO_FLASH
-/* Environment in NOR flash */
-#  define CONFIG_ENV_IS_IN_FLASH
-# elif defined(CONFIG_ZYNQ_QSPI)
-/* Environment in Serial Flash */
-#  define CONFIG_ENV_IS_IN_SPI_FLASH
-# elif defined(CONFIG_NAND_ZYNQ)
-/* Environment in NAND flash */
-#  define CONFIG_ENV_IS_IN_NAND
-# elif defined(CONFIG_SYS_NO_FLASH)
-#  define CONFIG_ENV_IS_NOWHERE
-# endif
-
-# define CONFIG_ENV_SECT_SIZE		CONFIG_ENV_SIZE
-
-/* cc108 requires to be 0xF00000 to have boot.bin with bitstream included */
-# ifndef CONFIG_ENV_OFFSET
-#  define CONFIG_ENV_OFFSET		0xE0000
-# endif
-#endif
-
 /* enable preboot to be loaded before CONFIG_BOOTDELAY */
 #define CONFIG_PREBOOT
+
+/* Boot configuration */
+#define CONFIG_SYS_LOAD_ADDR		0 /* default? */
+
+#ifdef CONFIG_SPL_BUILD
+#define BOOTENV
+#else
+
+#ifdef CONFIG_CMD_MMC
+#define BOOT_TARGET_DEVICES_MMC(func) func(MMC, mmc, 0)
+#else
+#define BOOT_TARGET_DEVICES_MMC(func)
+#endif
+
+#ifdef CONFIG_CMD_USB
+#define BOOT_TARGET_DEVICES_USB(func) func(USB, usb, 0)
+#else
+#define BOOT_TARGET_DEVICES_USB(func)
+#endif
+
+#if defined(CONFIG_CMD_PXE) && defined(CONFIG_CMD_DHCP)
+#define BOOT_TARGET_DEVICES_PXE(func) func(PXE, pxe, na)
+#else
+#define BOOT_TARGET_DEVICES_PXE(func)
+#endif
+
+#if defined(CONFIG_CMD_DHCP)
+#define BOOT_TARGET_DEVICES_DHCP(func) func(DHCP, dhcp, na)
+#else
+#define BOOT_TARGET_DEVICES_DHCP(func)
+#endif
+
+#define BOOTENV_DEV_XILINX(devtypeu, devtypel, instance) \
+	"bootcmd_xilinx=run $modeboot\0"
+
+#define BOOTENV_DEV_NAME_XILINX(devtypeu, devtypel, instance) \
+	"xilinx "
+
+#define BOOT_TARGET_DEVICES(func) \
+	BOOT_TARGET_DEVICES_MMC(func) \
+	BOOT_TARGET_DEVICES_USB(func) \
+	BOOT_TARGET_DEVICES_PXE(func) \
+	BOOT_TARGET_DEVICES_DHCP(func) \
+	func(XILINX, xilinx, na)
+
+#include <config_distro_bootcmd.h>
+#endif /* CONFIG_SPL_BUILD */
 
 /* Default environment */
 #ifndef CONFIG_EXTRA_ENV_SETTINGS
 #define CONFIG_EXTRA_ENV_SETTINGS	\
-	"ethaddr=00:0a:35:00:01:22\0"	\
 	"kernel_image=uImage\0"	\
 	"kernel_load_address=0x2080000\0" \
 	"ramdisk_image=uramdisk.image.gz\0"	\
@@ -232,13 +209,15 @@
 		"mmcinfo && " \
 		"load mmc 0 ${loadbit_addr} ${bitstream_image} && " \
 		"fpga load 0 ${loadbit_addr} ${filesize}\0" \
-	"norboot=echo Copying Linux from NOR flash to RAM... && " \
+	"norboot=run xilinxcmd && " \
+		"echo Copying Linux from NOR flash to RAM... && " \
 		"cp.b 0xE2100000 ${kernel_load_address} ${kernel_size} && " \
 		"cp.b 0xE2600000 ${devicetree_load_address} ${devicetree_size} && " \
 		"echo Copying ramdisk... && " \
 		"cp.b 0xE2620000 ${ramdisk_load_address} ${ramdisk_size} && " \
 		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"qspiboot=echo Copying Linux from QSPI flash to RAM... && " \
+	"qspiboot=run xilinxcmd && " \
+		" echo Copying Linux from QSPI flash to RAM... && " \
 		"sf probe 0 0 0 && " \
 		"sf read ${kernel_load_address} 0x100000 ${kernel_size} && " \
 		"sf read ${devicetree_load_address} 0x600000 ${devicetree_size} && " \
@@ -254,7 +233,7 @@
 			"echo Running uenvcmd ...; " \
 			"run uenvcmd; " \
 		"fi\0" \
-	"sdboot=if mmcinfo; then " \
+	"sdboot=run xilinxcmd && if mmcinfo; then " \
 			"run uenvboot; " \
 			"echo Copying Linux from SD to RAM... && " \
 			"load mmc 0 ${kernel_load_address} ${kernel_image} && " \
@@ -262,7 +241,7 @@
 			"load mmc 0 ${ramdisk_load_address} ${ramdisk_image} && " \
 			"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}; " \
 		"fi\0" \
-	"usbboot=if usb start; then " \
+	"usbboot=run xilinxcmd && if usb start; then " \
 			"run uenvboot; " \
 			"echo Copying Linux from USB to RAM... && " \
 			"load usb 0 ${kernel_load_address} ${kernel_image} && " \
@@ -270,65 +249,56 @@
 			"load usb 0 ${ramdisk_load_address} ${ramdisk_image} && " \
 			"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}; " \
 		"fi\0" \
-	"nandboot=echo Copying Linux from NAND flash to RAM... && " \
+	"nandboot=run xilinxcmd && " \
+		"echo Copying Linux from NAND flash to RAM... && " \
 		"nand read ${kernel_load_address} 0x100000 ${kernel_size} && " \
 		"nand read ${devicetree_load_address} 0x600000 ${devicetree_size} && " \
 		"echo Copying ramdisk... && " \
 		"nand read ${ramdisk_load_address} 0x620000 ${ramdisk_size} && " \
 		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"jtagboot=echo TFTPing Linux to RAM... && " \
+	"jtagboot=run xilinxcmd && echo TFTPing Linux to RAM... && " \
 		"tftpboot ${kernel_load_address} ${kernel_image} && " \
 		"tftpboot ${devicetree_load_address} ${devicetree_image} && " \
 		"tftpboot ${ramdisk_load_address} ${ramdisk_image} && " \
 		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"rsa_norboot=echo Copying Image from NOR flash to RAM... && " \
+	"rsa_norboot=run xilinxcmd && " \
+		"echo Copying Image from NOR flash to RAM... && " \
 		"cp.b 0xE2100000 0x100000 ${boot_size} && " \
 		"zynqrsa 0x100000 && " \
 		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"rsa_nandboot=echo Copying Image from NAND flash to RAM... && " \
+	"rsa_nandboot=run xilinxcmd && " \
+		"echo Copying Image from NAND flash to RAM... && " \
 		"nand read 0x100000 0x0 ${boot_size} && " \
 		"zynqrsa 0x100000 && " \
 		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"rsa_qspiboot=echo Copying Image from QSPI flash to RAM... && " \
+	"rsa_qspiboot=run xilinxcmd && " \
+		"echo Copying Image from QSPI flash to RAM... && " \
 		"sf probe 0 0 0 && " \
 		"sf read 0x100000 0x0 ${boot_size} && " \
 		"zynqrsa 0x100000 && " \
 		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"rsa_sdboot=echo Copying Image from SD to RAM... && " \
+	"rsa_sdboot=run xilinxcmd && echo Copying Image from SD to RAM... && " \
 		"load mmc 0 0x100000 ${boot_image} && " \
 		"zynqrsa 0x100000 && " \
 		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"rsa_jtagboot=echo TFTPing Image to RAM... && " \
+	"rsa_jtagboot=run xilinxcmd && echo TFTPing Image to RAM... && " \
 		"tftpboot 0x100000 ${boot_image} && " \
 		"zynqrsa 0x100000 && " \
 		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-		DFU_ALT_INFO
+		DFU_ALT_INFO \
+	"xilinxcmd=echo !!! && " \
+		"echo !!! Booting cmd is deprecated (will be removed in 2020). && " \
+		"echo !!! Please move to distro bootcmd. && echo !!!\0" \
+		BOOTENV
 #endif
-
-/* default boot is according to the bootmode switch settings */
-#if defined(CONFIG_CMD_ZYNQ_RSA)
-#define CONFIG_BOOTCOMMAND		"run rsa_$modeboot"
-#else
-#define CONFIG_BOOTCOMMAND		"run $modeboot"
-#endif
-#define CONFIG_SYS_LOAD_ADDR		0 /* default? */
 
 /* Miscellaneous configurable options */
 
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_BOARD_LATE_INIT
-#define CONFIG_SYS_LONGHELP
 #define CONFIG_CLOCKS
-#define CONFIG_CMD_CLK
 #define CONFIG_SYS_MAXARGS		32 /* max number of command args */
 #define CONFIG_SYS_CBSIZE		2048 /* Console I/O Buffer Size */
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
 					sizeof(CONFIG_SYS_PROMPT) + 16)
-
-#ifndef CONFIG_NR_DRAM_BANKS
-# define CONFIG_NR_DRAM_BANKS		1
-#endif
 
 #define CONFIG_SYS_MEMTEST_START	0
 #define CONFIG_SYS_MEMTEST_END		0x1000
@@ -339,20 +309,6 @@
 					CONFIG_SYS_INIT_RAM_SIZE - \
 					GENERATED_GBL_DATA_SIZE)
 
-/* Enable the PL to be downloaded */
-#define CONFIG_FPGA
-#define CONFIG_FPGA_XILINX
-#define CONFIG_FPGA_ZYNQPL
-#define CONFIG_CMD_FPGA_LOADMK
-#define CONFIG_CMD_FPGA_LOADP
-#define CONFIG_CMD_FPGA_LOADBP
-#define CONFIG_CMD_FPGA_LOADFS
-
-/* FIT support */
-#define CONFIG_IMAGE_FORMAT_LEGACY /* enable also legacy image format */
-
-/* FDT support */
-#define CONFIG_DISPLAY_BOARDINFO_LATE
 
 /* Extend size of kernel image for uncompression */
 #define CONFIG_SYS_BOOTM_LEN	(60 * 1024 * 1024)
@@ -362,41 +318,10 @@
 
 #define CONFIG_SYS_LDSCRIPT  "arch/arm/mach-zynq/u-boot.lds"
 
-/* Commands */
-#if defined(CONFIG_CMD_ZYNQ_RSA)
-#define CONFIG_SHA256
-#endif
-
 #undef CONFIG_BOOTM_NETBSD
 
-#define CONFIG_SYS_HZ			1000
-
-/* For development/debugging */
-#ifdef DEBUG
-# define CONFIG_CMD_REGINFO
-# define CONFIG_PANIC_HANG
-#endif
-
-/* SPL part */
-#define CONFIG_CMD_SPL
-#define CONFIG_SPL_FRAMEWORK
-#define CONFIG_SPL_BOARD_INIT
-#define CONFIG_SPL_RAM_DEVICE
-
-#define CONFIG_SPL_LDSCRIPT	"arch/arm/mach-zynq/u-boot-spl.lds"
-
-/* FPGA support */
-#define CONFIG_SPL_FPGA_SUPPORT
-#define CONFIG_SPL_FPGA_LOAD_ADDR      0x1000000
-/* #define CONFIG_SPL_FPGA_BIT */
-#ifdef CONFIG_SPL_FPGA_BIT
-# define CONFIG_SPL_FPGA_LOAD_ARGS_NAME "download.bit"
-#else
-# define CONFIG_SPL_FPGA_LOAD_ARGS_NAME "fpga.bin"
-#endif
-
 /* MMC support */
-#ifdef CONFIG_ZYNQ_SDHCI
+#ifdef CONFIG_MMC_SDHCI_ZYNQ
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION     1
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME     "u-boot.img"
 #endif
@@ -404,7 +329,6 @@
 /* Disable dcache for SPL just for sure */
 #ifdef CONFIG_SPL_BUILD
 #define CONFIG_SYS_DCACHE_OFF
-#undef CONFIG_FPGA
 #endif
 
 /* Address in RAM where the parameters must be copied by SPL. */
@@ -420,7 +344,6 @@
 
 /* qspi mode is working fine */
 #ifdef CONFIG_ZYNQ_QSPI
-#define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	0x100000
 #define CONFIG_SYS_SPI_ARGS_OFFS	0x200000
 #define CONFIG_SYS_SPI_ARGS_SIZE	0x80000
@@ -428,22 +351,15 @@
 					CONFIG_SYS_SPI_ARGS_SIZE)
 #endif
 
-#define CONFIG_SPL_RAM_DEVICE
-
-/* for booting directly linux */
-
 /* SP location before relocation, must use scratch RAM */
 #define CONFIG_SPL_TEXT_BASE	0x0
 
 /* 3 * 64kB blocks of OCM - one is on the top because of bootrom */
 #define CONFIG_SPL_MAX_SIZE	0x30000
 
-/* The highest 64k OCM address */
-#define OCM_HIGH_ADDR	0xffff0000
-
 /* On the top of OCM space */
-#define CONFIG_SYS_SPL_MALLOC_START	OCM_HIGH_ADDR
-#define CONFIG_SYS_SPL_MALLOC_SIZE	0x2000
+#define CONFIG_SYS_SPL_MALLOC_START	CONFIG_SPL_STACK_R_ADDR
+#define CONFIG_SYS_SPL_MALLOC_SIZE	0x2000000
 
 /*
  * SPL stack position - and stack goes down
@@ -455,6 +371,8 @@
 /* BSS setup */
 #define CONFIG_SPL_BSS_START_ADDR	0x100000
 #define CONFIG_SPL_BSS_MAX_SIZE		0x100000
+
+#define CONFIG_SPL_LOAD_FIT_ADDRESS 0x10000000
 
 #define CONFIG_SYS_UBOOT_START	CONFIG_SYS_TEXT_BASE
 

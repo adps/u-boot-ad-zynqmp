@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -12,7 +11,6 @@
 #include <asm/arch/fsl_serdes.h>
 #include <asm/arch/ls102xa_soc.h>
 #include <asm/arch/ls102xa_devdis.h>
-#include <asm/arch/ls102xa_sata.h>
 #include <hwconfig.h>
 #include <mmc.h>
 #include <fsl_csu.h>
@@ -38,8 +36,6 @@
 
 #define SET_SDHC_MUX_SEL(reg, value)	((reg & 0x0f) | value)
 #define SET_EC_MUX_SEL(reg, value)	((reg & 0xf0) | value)
-DECLARE_GLOBAL_DATA_PTR;
-
 enum {
 	MUX_TYPE_CAN,
 	MUX_TYPE_IIC2,
@@ -162,9 +158,7 @@ int dram_init(void)
 	 * before accessing DDR SPD.
 	 */
 	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT);
-	gd->ram_size = initdram(0);
-
-	return 0;
+	return fsl_initdram();
 }
 
 #ifdef CONFIG_FSL_ESDHC
@@ -206,7 +200,8 @@ int board_early_init_f(void)
 #ifdef CONFIG_SPL_BUILD
 void board_init_f(ulong dummy)
 {
-	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)CONFIG_SYS_CCI400_ADDR;
+	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)(CONFIG_SYS_IMMR +
+					CONFIG_SYS_CCI400_OFFSET);
 	unsigned int major;
 
 #ifdef CONFIG_NAND_BOOT
@@ -249,6 +244,7 @@ void board_init_f(ulong dummy)
 	if (major == SOC_MAJOR_VER_1_0)
 		out_le32(&cci->ctrl_ord, CCI400_CTRLORD_TERM_BARRIER);
 
+	timer_init();
 	dram_init();
 
 	/* Allow OCRAM access permission as R/W */
@@ -366,9 +362,6 @@ int config_serdes_mux(void)
 #ifdef CONFIG_BOARD_LATE_INIT
 int board_late_init(void)
 {
-#ifdef CONFIG_SCSI_AHCI_PLAT
-	ls1021a_sata_init();
-#endif
 #ifdef CONFIG_CHAIN_OF_TRUST
 	fsl_setenv_chain_of_trust();
 #endif
@@ -427,7 +420,8 @@ int misc_init_r(void)
 
 int board_init(void)
 {
-	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)CONFIG_SYS_CCI400_ADDR;
+	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)(CONFIG_SYS_IMMR +
+					CONFIG_SYS_CCI400_OFFSET);
 	unsigned int major;
 
 #ifdef CONFIG_SYS_FSL_ERRATUM_A010315
@@ -462,7 +456,8 @@ int board_init(void)
 #if defined(CONFIG_DEEP_SLEEP)
 void board_sleep_prepare(void)
 {
-	struct ccsr_cci400 __iomem *cci = (void *)CONFIG_SYS_CCI400_ADDR;
+	struct ccsr_cci400 __iomem *cci = (void *)(CONFIG_SYS_IMMR +
+						CONFIG_SYS_CCI400_OFFSET);
 	unsigned int major;
 
 	major = get_soc_major_rev();

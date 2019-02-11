@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * URB OHCI HCD (Host Controller Driver) for USB on the AT91RM9200 and PCI bus.
  *
@@ -16,8 +17,6 @@
  *
  * Modified for the MP2USB by (C) Copyright 2005 Eric Benard
  * ebenard@eukrea.com - based on s3c24x0's driver
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 /*
  * IMPORTANT NOTES
@@ -51,10 +50,7 @@
 #endif
 
 #if defined(CONFIG_CPU_ARM920T) || \
-    defined(CONFIG_S3C24X0) || \
-    defined(CONFIG_440EP) || \
     defined(CONFIG_PCI_OHCI) || \
-    defined(CONFIG_MPC5200) || \
     defined(CONFIG_SYS_OHCI_USE_NPS)
 # define OHCI_USE_NPS		/* force NoPowerSwitching mode */
 #endif
@@ -124,7 +120,7 @@ static struct pci_device_id ehci_pci_ids[] = {
 #define invalidate_dcache_iso_td(addr) invalidate_dcache_buffer(addr, 32)
 #define invalidate_dcache_hcca(addr) invalidate_dcache_buffer(addr, 256)
 
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 /*
  * The various ohci_mdelay(1) calls in the code seem unnecessary. We keep
  * them around when building for older boards not yet converted to the dm
@@ -135,7 +131,7 @@ static struct pci_device_id ehci_pci_ids[] = {
 #define ohci_mdelay(x) mdelay(x)
 #endif
 
-#ifndef CONFIG_DM_USB
+#if !CONFIG_IS_ENABLED(DM_USB)
 /* global ohci_t */
 static ohci_t gohci;
 /* this must be aligned to a 256 byte boundary */
@@ -1089,10 +1085,6 @@ static void check_status(td_t *td_list)
 				*phwHeadP &= m32_swap(0xfffffff2);
 			flush_dcache_ed(td_list->ed);
 		}
-#ifdef CONFIG_MPC5200
-		td_list->hwNextTD = 0;
-		flush_dcache_td(td_list);
-#endif
 	}
 }
 
@@ -1699,7 +1691,7 @@ static int _ohci_destroy_int_queue(ohci_t *ohci, struct usb_device *dev,
 	return 0;
 }
 
-#ifndef CONFIG_DM_USB
+#if !CONFIG_IS_ENABLED(DM_USB)
 /* submit routines called from usb.c */
 int submit_bulk_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
 		int transfer_len)
@@ -1988,7 +1980,7 @@ static int hc_interrupt(ohci_t *ohci)
 
 /*-------------------------------------------------------------------------*/
 
-#ifndef CONFIG_DM_USB
+#if !CONFIG_IS_ENABLED(DM_USB)
 
 /*-------------------------------------------------------------------------*/
 
@@ -2138,7 +2130,7 @@ int submit_control_msg(struct usb_device *dev, unsigned long pipe,
 }
 #endif
 
-#ifdef CONFIG_DM_USB
+#if CONFIG_IS_ENABLED(DM_USB)
 static int ohci_submit_control_msg(struct udevice *dev, struct usb_device *udev,
 				   unsigned long pipe, void *buffer, int length,
 				   struct devrequest *setup)

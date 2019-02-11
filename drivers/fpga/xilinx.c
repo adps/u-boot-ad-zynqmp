@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012-2013, Xilinx, Michal Simek
  *
  * (C) Copyright 2002
  * Rich Ireland, Enterasys Networks, rireland@enterasys.com.
  * Keith Outwater, keith_outwater@mvis.com
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -23,6 +22,19 @@
 static int xilinx_validate(xilinx_desc *desc, char *fn);
 
 /* ------------------------------------------------------------------------- */
+
+int fpga_is_partial_data(int devnum, size_t img_len)
+{
+	const fpga_desc * const desc = fpga_get_desc(devnum);
+	xilinx_desc *desc_xilinx = desc->devdesc;
+
+	/* Check datasize against FPGA size */
+	if (img_len >= desc_xilinx->size)
+		return 0;
+
+	/* datasize is smaller, must be partial data */
+	return 1;
+}
 
 int fpga_loadbitstream(int devnum, char *fpgadata, size_t size,
 		       bitstream_type bstype)
@@ -161,7 +173,7 @@ int xilinx_loadfs(xilinx_desc *desc, const void *buf, size_t bsize,
 
 #if defined(CONFIG_CMD_FPGA_LOAD_SECURE)
 int xilinx_loads(xilinx_desc *desc, const void *buf, size_t bsize,
-		 fpga_secure_info *fpga_sec_info)
+		 struct fpga_secure_info *fpga_sec_info)
 {
 	if (!xilinx_validate(desc, (char *)__func__)) {
 		printf("%s: Invalid device descriptor\n", __func__);
@@ -169,7 +181,7 @@ int xilinx_loads(xilinx_desc *desc, const void *buf, size_t bsize,
 	}
 
 	if (!desc->operations || !desc->operations->loads) {
-		printf("%s: Missing loade operation\n", __func__);
+		printf("%s: Missing loads operation\n", __func__);
 		return FPGA_FAIL;
 	}
 

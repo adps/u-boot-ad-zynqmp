@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Samsung's S5PC110-based Goni board device tree source
  *
  * Copyright (c) 2014 Google, Inc
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /dts-v1/;
@@ -42,7 +41,7 @@
 		#size-cells = <0>;
 		status = "okay";
 
-		pmic@66 {
+		max8998-pmic@66 {
 			compatible = "maxim,max8998";
 			reg = <0x66 0 0>;
 

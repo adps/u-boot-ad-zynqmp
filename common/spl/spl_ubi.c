@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+ OR BSD-3-Clause
 /*
  * Copyright (C) 2016
  * Ladislav Michl <ladis@linux-mips.org>
- *
- * SPDX-License-Identifier: GPL 2.0+ BSD-3-Clause
  */
 
 #include <common.h>
@@ -38,7 +37,7 @@ int spl_ubi_load_image(struct spl_image_info *spl_image,
 		goto out;
 	}
 	info.ubi = (struct ubi_scan_info *)CONFIG_SPL_UBI_INFO_ADDR;
-	info.fastmap = 1;
+	info.fastmap = IS_ENABLED(CONFIG_MTD_UBI_FASTMAP);
 
 	info.peb_offset = CONFIG_SPL_UBI_PEB_OFFSET;
 	info.vid_offset = CONFIG_SPL_UBI_VID_OFFSET;
@@ -62,8 +61,7 @@ int spl_ubi_load_image(struct spl_image_info *spl_image,
 		puts("Loading Linux failed, falling back to U-Boot.\n");
 	}
 #endif
-	header = (struct image_header *)
-		(CONFIG_SYS_TEXT_BASE - sizeof(struct image_header));
+	header = spl_get_load_buffer(-sizeof(*header), sizeof(header));
 	volumes[0].vol_id = CONFIG_SPL_UBI_LOAD_MONITOR_ID;
 	volumes[0].load_addr = (void *)header;
 

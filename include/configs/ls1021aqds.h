@@ -1,13 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
-
-#define CONFIG_LS102XA
 
 #define CONFIG_ARMV7_PSCI_1_0
 
@@ -16,7 +13,6 @@
 #define CONFIG_SYS_FSL_CLK
 
 #define CONFIG_SKIP_LOWLEVEL_INIT
-#define CONFIG_BOARD_EARLY_INIT_F
 
 #define CONFIG_DEEP_SLEEP
 
@@ -27,11 +23,6 @@
 
 #define CONFIG_SYS_INIT_RAM_ADDR	OCRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE	OCRAM_SIZE
-
-/*
- * Generic Timer Definitions
- */
-#define GENERIC_TIMER_CLK		12500000
 
 #ifndef __ASSEMBLY__
 unsigned long get_board_sys_clk(void);
@@ -59,14 +50,11 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_FSL_PBL_RCW	\
 	board/freescale/ls1021aqds/ls102xa_rcw_sd_ifc.cfg
 #endif
-#define CONFIG_SPL_FRAMEWORK
-#define CONFIG_SPL_LDSCRIPT	"arch/$(ARCH)/cpu/u-boot-spl.lds"
 
 #define CONFIG_SPL_TEXT_BASE		0x10000000
 #define CONFIG_SPL_MAX_SIZE		0x1a000
 #define CONFIG_SPL_STACK		0x1001d000
 #define CONFIG_SPL_PAD_TO		0x1c000
-#define CONFIG_SYS_TEXT_BASE		0x82000000
 
 #define CONFIG_SYS_SPL_MALLOC_START	(CONFIG_SYS_TEXT_BASE + \
 		CONFIG_SYS_MONITOR_LEN)
@@ -76,24 +64,13 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_MONITOR_LEN		0xc0000
 #endif
 
-#ifdef CONFIG_QSPI_BOOT
-#define CONFIG_SYS_TEXT_BASE		0x40010000
-#endif
-
-#if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
-#define CONFIG_SYS_NO_FLASH
-#endif
-
 #ifdef CONFIG_NAND_BOOT
 #define CONFIG_SYS_FSL_PBL_RCW	board/freescale/ls1021aqds/ls102xa_rcw_nand.cfg
-#define CONFIG_SPL_FRAMEWORK
-#define CONFIG_SPL_LDSCRIPT	"arch/$(ARCH)/cpu/u-boot-spl.lds"
 
 #define CONFIG_SPL_TEXT_BASE		0x10000000
 #define CONFIG_SPL_MAX_SIZE		0x1a000
 #define CONFIG_SPL_STACK		0x1001d000
 #define CONFIG_SPL_PAD_TO		0x1c000
-#define CONFIG_SYS_TEXT_BASE		0x82000000
 
 #define CONFIG_SYS_NAND_U_BOOT_SIZE	(400 << 10)
 #define CONFIG_SYS_NAND_U_BOOT_OFFS	CONFIG_SPL_PAD_TO
@@ -107,12 +84,6 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000
 #define CONFIG_SYS_MONITOR_LEN		0x80000
 #endif
-
-#ifndef CONFIG_SYS_TEXT_BASE
-#define CONFIG_SYS_TEXT_BASE		0x60100000
-#endif
-
-#define CONFIG_NR_DRAM_BANKS		1
 
 #define CONFIG_DDR_SPD
 #define SPD_EEPROM_ADDRESS		0x51
@@ -134,11 +105,9 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_MEM_INIT_VALUE           0xdeadbeef
 #endif
 
-#define CONFIG_FSL_CAAM			/* Enable CAAM */
-
 #if !defined(CONFIG_SD_BOOT) && !defined(CONFIG_NAND_BOOT) && \
 	!defined(CONFIG_QSPI_BOOT)
-#define CONFIG_U_QE
+#define CONFIG_SYS_QE_FMAN_FW_IN_NOR
 #endif
 
 /*
@@ -176,9 +145,6 @@ unsigned long get_board_ddr_clk(void);
 					FTIM2_NOR_TWP(0x1c))
 #define CONFIG_SYS_NOR_FTIM3		0
 
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_CFI
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 #define CONFIG_SYS_FLASH_QUIET_TEST
 #define CONFIG_FLASH_SHOW_PROGRESS	45
 #define CONFIG_CFI_FLASH_USE_WEAK_ACCESSORS
@@ -233,7 +199,6 @@ unsigned long get_board_ddr_clk(void);
 
 #define CONFIG_SYS_NAND_BASE_LIST	{ CONFIG_SYS_NAND_BASE }
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
-#define CONFIG_CMD_NAND
 
 #define CONFIG_SYS_NAND_BLOCK_SIZE	(128 * 1024)
 #endif
@@ -364,15 +329,12 @@ unsigned long get_board_ddr_clk(void);
 #ifdef CONFIG_LPUART
 #define CONFIG_LPUART_32B_REG
 #else
-#define CONFIG_CONS_INDEX		1
 #define CONFIG_SYS_NS16550_SERIAL
 #ifndef CONFIG_DM_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #endif
 #define CONFIG_SYS_NS16550_CLK		get_serial_clock()
 #endif
-
-#define CONFIG_BAUDRATE			115200
 
 /*
  * I2C
@@ -382,6 +344,15 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
 #define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
 #define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
+
+/* EEPROM */
+#define CONFIG_ID_EEPROM
+#define CONFIG_SYS_I2C_EEPROM_NXID
+#define CONFIG_SYS_EEPROM_BUS_NUM		0
+#define CONFIG_SYS_I2C_EEPROM_ADDR		0x57
+#define CONFIG_SYS_I2C_EEPROM_ADDR_LEN		1
+#define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS	3
+#define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS	5
 
 /*
  * I2C bus multiplexer
@@ -393,10 +364,6 @@ unsigned long get_board_ddr_clk(void);
 /*
  * MMC
  */
-#define CONFIG_FSL_ESDHC
-#define CONFIG_GENERIC_MMC
-
-#define CONFIG_DOS_PARTITION
 
 /* SPI */
 #if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
@@ -415,33 +382,9 @@ unsigned long get_board_ddr_clk(void);
 #endif
 
 /*
- * USB
- */
-/* EHCI Support - disbaled by default */
-/*#define CONFIG_HAS_FSL_DR_USB*/
-
-#ifdef CONFIG_HAS_FSL_DR_USB
-#define CONFIG_USB_EHCI
-#define CONFIG_USB_EHCI_FSL
-#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
-#endif
-
-/*XHCI Support - enabled by default*/
-#define CONFIG_HAS_FSL_XHCI_USB
-
-#ifdef CONFIG_HAS_FSL_XHCI_USB
-#define CONFIG_USB_XHCI_FSL
-#define CONFIG_USB_MAX_CONTROLLER_COUNT		1
-#define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS	2
-#endif
-
-/*
  * Video
  */
-#define CONFIG_FSL_DCU_FB
-
-#ifdef CONFIG_FSL_DCU_FB
-#define CONFIG_CMD_BMP
+#ifdef CONFIG_VIDEO_FSL_DCU_FB
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_BMP_LOGO
 
@@ -454,10 +397,8 @@ unsigned long get_board_ddr_clk(void);
 /*
  * eTSEC
  */
-#define CONFIG_TSEC_ENET
 
 #ifdef CONFIG_TSEC_ENET
-#define CONFIG_MII
 #define CONFIG_MII_DEFAULT_TSEC		3
 #define CONFIG_TSEC1			1
 #define CONFIG_TSEC1_NAME		"eTSEC1"
@@ -480,8 +421,6 @@ unsigned long get_board_ddr_clk(void);
 
 #define CONFIG_ETHPRIME			"eTSEC1"
 
-#define CONFIG_PHY_GIGE
-#define CONFIG_PHYLIB
 #define CONFIG_PHY_REALTEK
 
 #define CONFIG_HAS_ETH0
@@ -500,36 +439,17 @@ unsigned long get_board_ddr_clk(void);
 /* PCIe */
 #define CONFIG_PCIE1		/* PCIE controller 1 */
 #define CONFIG_PCIE2		/* PCIE controller 2 */
-#define CONFIG_PCIE_LAYERSCAPE	/* Use common FSL Layerscape PCIe code */
-#define FSL_PCIE_COMPAT "fsl,ls1021a-pcie"
-
-#define CONFIG_SYS_PCI_64BIT
-
-#define CONFIG_SYS_PCIE_CFG0_PHYS_OFF	0x00000000
-#define CONFIG_SYS_PCIE_CFG0_SIZE	0x00001000	/* 4k */
-#define CONFIG_SYS_PCIE_CFG1_PHYS_OFF	0x00001000
-#define CONFIG_SYS_PCIE_CFG1_SIZE	0x00001000	/* 4k */
-
-#define CONFIG_SYS_PCIE_IO_BUS		0x00000000
-#define CONFIG_SYS_PCIE_IO_PHYS_OFF	0x00010000
-#define CONFIG_SYS_PCIE_IO_SIZE		0x00010000	/* 64k */
-
-#define CONFIG_SYS_PCIE_MEM_BUS		0x08000000
-#define CONFIG_SYS_PCIE_MEM_PHYS_OFF	0x04000000
-#define CONFIG_SYS_PCIE_MEM_SIZE	0x08000000	/* 128M */
 
 #ifdef CONFIG_PCI
 #define CONFIG_PCI_SCAN_SHOW
-#define CONFIG_CMD_PCI
 #endif
 
 #define CONFIG_CMDLINE_TAG
-#define CONFIG_CMDLINE_EDITING
 
 #define CONFIG_PEN_ADDR_BIG_ENDIAN
 #define CONFIG_LAYERSCAPE_NS_ACCESS
 #define CONFIG_SMP_PEN_ADDR		0x01ee0200
-#define CONFIG_TIMER_CLK_FREQ		12500000
+#define COUNTER_FREQUENCY		12500000
 
 #define CONFIG_HWCONFIG
 #define HWCONFIG_BUFFER_SIZE		256
@@ -537,7 +457,7 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_FSL_DEVICE_DISABLE
 
 
-#define CONFIG_SYS_QE_FW_ADDR     0x600c0000
+#define CONFIG_SYS_QE_FW_ADDR     0x60940000
 
 #ifdef CONFIG_LPUART
 #define CONFIG_EXTRA_ENV_SETTINGS       \
@@ -556,13 +476,6 @@ unsigned long get_board_ddr_clk(void);
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP		/* undef to save memory */
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size */
-#define CONFIG_SYS_PBSIZE		\
-		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS		16	/* max number of command args */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 
 #define CONFIG_SYS_MEMTEST_START	0x80000000
 #define CONFIG_SYS_MEMTEST_END		0x9fffffff
@@ -570,12 +483,6 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_SYS_LOAD_ADDR		0x82000000
 
 #define CONFIG_LS102XA_STREAM_ID
-
-/*
- * Stack sizes
- * The stack sizes are set up in start.S using the settings below
- */
-#define CONFIG_STACKSIZE		(30 * 1024)
 
 #define CONFIG_SYS_INIT_SP_OFFSET \
 	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
@@ -594,32 +501,20 @@ unsigned long get_board_ddr_clk(void);
 #define CONFIG_ENV_OVERWRITE
 
 #if defined(CONFIG_SD_BOOT)
-#define CONFIG_ENV_OFFSET		0x100000
-#define CONFIG_ENV_IS_IN_MMC
+#define CONFIG_ENV_OFFSET		0x300000
 #define CONFIG_SYS_MMC_ENV_DEV		0
 #define CONFIG_ENV_SIZE			0x2000
 #elif defined(CONFIG_QSPI_BOOT)
-#define CONFIG_ENV_IS_IN_SPI_FLASH
 #define CONFIG_ENV_SIZE			0x2000          /* 8KB */
-#define CONFIG_ENV_OFFSET		0x100000        /* 1MB */
+#define CONFIG_ENV_OFFSET		0x300000        /* 3MB */
 #define CONFIG_ENV_SECT_SIZE		0x10000
 #elif defined(CONFIG_NAND_BOOT)
-#define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_SIZE			0x2000
 #define CONFIG_ENV_OFFSET		(10 * CONFIG_SYS_NAND_BLOCK_SIZE)
 #else
-#define CONFIG_ENV_IS_IN_FLASH
-#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - CONFIG_ENV_SECT_SIZE)
+#define CONFIG_ENV_ADDR			(CONFIG_SYS_FLASH_BASE + 0x300000)
 #define CONFIG_ENV_SIZE			0x2000
 #define CONFIG_ENV_SECT_SIZE		0x20000 /* 128K (one sector) */
-#endif
-
-#define CONFIG_MISC_INIT_R
-
-/* Hash command with SHA acceleration supported in hardware */
-#ifdef CONFIG_FSL_CAAM
-#define CONFIG_CMD_HASH
-#define CONFIG_SHA_HW_ACCEL
 #endif
 
 #include <asm/fsl_secure_boot.h>

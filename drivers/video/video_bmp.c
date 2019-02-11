@@ -1,13 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2015 Google, Inc
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <bmp_layout.h>
 #include <dm.h>
 #include <mapmem.h>
+#include <splash.h>
 #include <video.h>
 #include <watchdog.h>
 #include <asm/unaligned.h>
@@ -140,8 +140,6 @@ __weak void fb_put_word(uchar **fb, uchar **from)
 	*(*fb)++ = *(*from)++;
 }
 #endif /* CONFIG_BMP_16BPP */
-
-#define BMP_ALIGN_CENTER	0x7fff
 
 /**
  * video_splash_align_axis() - Align a single coordinate
@@ -316,7 +314,7 @@ int video_bmp_display(struct udevice *dev, ulong bmp_image, int x, int y,
 		}
 		break;
 #endif /* CONFIG_BMP_16BPP */
-#if defined(CONFIG_BMP_24BMP)
+#if defined(CONFIG_BMP_24BPP)
 	case 24:
 		for (i = 0; i < height; ++i) {
 			for (j = 0; j < width; j++) {
@@ -328,7 +326,7 @@ int video_bmp_display(struct udevice *dev, ulong bmp_image, int x, int y,
 			fb -= priv->line_length + width * (bpix / 8);
 		}
 		break;
-#endif /* CONFIG_BMP_24BMP */
+#endif /* CONFIG_BMP_24BPP */
 #if defined(CONFIG_BMP_32BPP)
 	case 32:
 		for (i = 0; i < height; ++i) {
@@ -346,7 +344,7 @@ int video_bmp_display(struct udevice *dev, ulong bmp_image, int x, int y,
 		break;
 	};
 
-	video_sync(dev);
+	video_sync(dev, false);
 
 	return 0;
 }

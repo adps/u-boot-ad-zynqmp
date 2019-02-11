@@ -1,14 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Provides code common for host and device side USB.
  *
  * (C) Copyright 2016
  *     Texas Instruments Incorporated, <www.ti.com>
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <linux/usb/otg.h>
 #include <linux/usb/ch9.h>
 
@@ -29,7 +28,7 @@ enum usb_dr_mode usb_get_dr_mode(int node)
 
 	dr_mode = fdt_getprop(fdt, node, "dr_mode", NULL);
 	if (!dr_mode) {
-		error("usb dr_mode not found\n");
+		pr_err("usb dr_mode not found\n");
 		return USB_DR_MODE_UNKNOWN;
 	}
 
@@ -57,7 +56,7 @@ enum usb_device_speed usb_get_maximum_speed(int node)
 
 	max_speed = fdt_getprop(fdt, node, "maximum-speed", NULL);
 	if (!max_speed) {
-		error("usb maximum-speed not found\n");
+		pr_err("usb maximum-speed not found\n");
 		return USB_SPEED_UNKNOWN;
 	}
 

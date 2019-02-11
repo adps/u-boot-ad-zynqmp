@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2007 Freescale Semiconductor, Inc.
  * Kevin Lam <kevin.lam@freescale.com>
  * Joe D'Abbraccio <joe.d'abbraccio@freescale.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_H
@@ -16,16 +15,11 @@
 #define CONFIG_MPC837x		1 /* MPC837x CPU specific */
 #define CONFIG_MPC837XERDB	1
 
-#define	CONFIG_SYS_TEXT_BASE	0xFE000000
-
-#define CONFIG_BOARD_EARLY_INIT_F
-#define CONFIG_MISC_INIT_R
 #define CONFIG_HWCONFIG
 
 /*
  * On-board devices
  */
-#define CONFIG_TSEC_ENET		/* TSEC Ethernet support */
 #define CONFIG_VSC7385_ENET
 
 /*
@@ -245,14 +239,10 @@
 /*
  * FLASH on the Local Bus
  */
-#define CONFIG_SYS_FLASH_CFI		/* use the Common Flash Interface */
-#define CONFIG_FLASH_CFI_DRIVER	/* use the CFI driver */
 #define CONFIG_SYS_FLASH_BASE		0xFE000000 /* FLASH base address */
 #define CONFIG_SYS_FLASH_SIZE		8 /* max FLASH size is 32M */
 
-#define CONFIG_SYS_FLASH_PROTECTION	1	/* Use h/w Flash protection. */
 #define CONFIG_SYS_FLASH_EMPTY_INFO		/* display empty sectors */
-#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE	/* buffer up multiple bytes */
 
 					/* Window base at flash base */
 #define CONFIG_SYS_LBLAWBAR0_PRELIM	CONFIG_SYS_FLASH_BASE
@@ -325,7 +315,6 @@
 /*
  * Serial Port
  */
-#define CONFIG_CONS_INDEX	1
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
@@ -435,9 +424,6 @@
 /*
  * SATA
  */
-#define CONFIG_LIBATA
-#define CONFIG_FSL_SATA
-
 #define CONFIG_SYS_SATA_MAX_DEVICE	2
 #define CONFIG_SATA1
 #define CONFIG_SYS_SATA1_OFFSET	0x18000
@@ -450,22 +436,17 @@
 
 #ifdef CONFIG_FSL_SATA
 #define CONFIG_LBA48
-#define CONFIG_CMD_SATA
-#define CONFIG_DOS_PARTITION
 #endif
 
 /*
  * Environment
  */
 #ifndef CONFIG_SYS_RAMBOOT
-	#define CONFIG_ENV_IS_IN_FLASH	1
 	#define CONFIG_ENV_ADDR		\
 			(CONFIG_SYS_MONITOR_BASE+CONFIG_SYS_MONITOR_LEN)
 	#define CONFIG_ENV_SECT_SIZE	0x10000	/* 64K (one sector) for env */
 	#define CONFIG_ENV_SIZE		0x4000
 #else
-	#define CONFIG_SYS_NO_FLASH	1	/* Flash is not usable now */
-	#define CONFIG_ENV_IS_NOWHERE	1	/* Store ENV in memory only */
 	#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE-0x1000)
 	#define CONFIG_ENV_SIZE		0x2000
 #endif
@@ -477,49 +458,22 @@
  * BOOTP options
  */
 #define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
 
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_DATE
-
-#if defined(CONFIG_PCI)
-#define CONFIG_CMD_PCI
-#endif
-
-#define CONFIG_CMDLINE_EDITING	1	/* add command line history */
-#define CONFIG_AUTO_COMPLETE		/* add autocompletion support */
 
 #undef CONFIG_WATCHDOG		/* watchdog disabled */
 
 #ifdef CONFIG_MMC
-#define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_ESDHC_PIN_MUX
 #define CONFIG_SYS_FSL_ESDHC_ADDR	CONFIG_SYS_MPC83xx_ESDHC_ADDR
-#define CONFIG_GENERIC_MMC
-#define CONFIG_DOS_PARTITION
 #endif
 
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP	/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000 /* default load address */
-
-#if defined(CONFIG_CMD_KGDB)
-	#define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size */
-#else
-	#define CONFIG_SYS_CBSIZE	256 /* Console I/O Buffer Size */
-#endif
-
-				/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
-#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
-				/* Boot Argument Buffer Size */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
 
 /*
  * For booting Linux, the board info and command line data
@@ -657,13 +611,12 @@
 #define CONFIG_ENV_OVERWRITE
 
 #define CONFIG_HAS_FSL_DR_USB
-#define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_FSL
 #define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 
 #define CONFIG_NETDEV		"eth1"
 
-#define CONFIG_HOSTNAME		mpc837x_rdb
+#define CONFIG_HOSTNAME		"mpc837x_rdb"
 #define CONFIG_ROOTPATH		"/nfsroot"
 #define CONFIG_RAMDISKFILE	"rootfs.ext2.gz.uboot"
 #define CONFIG_BOOTFILE		"uImage"
@@ -673,7 +626,6 @@
 
 				/* default location for tftp and bootm */
 #define CONFIG_LOADADDR		800000
-#define CONFIG_BAUDRATE		115200
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"netdev=" CONFIG_NETDEV "\0"				\
