@@ -62,10 +62,10 @@
 	"kernel_offset=0x180000\0" \
 	"fdt_offset=0x100000\0" \
 	"kernel_size=0x1e00000\0" \
-	"kernel_image=Image-admvpx39z.bin\0" \
-	"ramdisk_image=adlnx-image-admvpx39z.cpio.gz.u-boot\0" \
+	"kernel_image=Image-admxrc9r1.bin\0" \
+	"ramdisk_image=adlnx-image-admxrc9r1.cpio.gz.u-boot\0" \
 	"ramdisk_addr=0x6000000\0" \
-	"fdt_image=admvpx39z.dtb\0" \
+	"fdt_image=admxrc9r1.dtb\0" \
 	"fdt_size=0x80000\0" \
 	"bootenv=uEnv.txt\0" \
 	"bootargs=earlycon clk_ignore_unused cpuidle.off=1\0" \

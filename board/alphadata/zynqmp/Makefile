@@ -2,13 +2,16 @@
 #
 # (C) Copyright 2014 - 2016 Xilinx, Inc.
 # Michal Simek <michal.simek@xilinx.com>
+#
+# Modified by Chris Holyoake for Alpha-Data ZynqMP boards
+#
 
 obj-y	:= zynqmp.o
 
 ifneq ($(CONFIG_XILINX_PS_INIT_FILE),"")
 PS_INIT_FILE := $(shell cd $(srctree); readlink -f $(CONFIG_XILINX_PS_INIT_FILE))
 init-objs := ps_init_gpl.o
-spl/board/xilinx/zynqmp/ps_init_gpl.o board/xilinx/zynqmp/ps_init_gpl.o: $(PS_INIT_FILE)
+spl/board/alphadata/zynqmp/ps_init_gpl.o board/alphadata/zynqmp/ps_init_gpl.o: $(PS_INIT_FILE)
 	$(CC) $(c_flags) -I $(srctree)/$(src) -c -o $@ $^
 endif
 
@@ -22,7 +25,7 @@ ifeq ($(init-objs),)
 ifneq ($(wildcard $(srctree)/$(src)/psu_init_gpl.c),)
 init-objs := psu_init_gpl.o
 $(if $(CONFIG_SPL_BUILD),\
-$(warning Put custom psu_init_gpl.c/h to board/xilinx/zynqmp/custom_hw_platform/))
+$(warning Put custom psu_init_gpl.c/h to board/alphadata/zynqmp/custom_hw_platform/))
 endif
 endif
 
